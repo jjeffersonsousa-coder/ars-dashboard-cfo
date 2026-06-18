@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paleta ARS — Identidade Adventista</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: #f5f7fa; padding: 32px 24px; min-height: 100vh; }
+    h1 { font-size: 20px; font-weight: 600; color: #13293D; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #6B7280; margin-bottom: 32px; }
+    .section { margin-bottom: 32px; }
+    .section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B7280; margin-bottom: 10px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip { border-radius: 10px; padding: 14px 16px; min-width: 130px; flex: 1; cursor: pointer; position: relative; transition: transform 0.1s; }
+    .chip:hover { transform: translateY(-2px); }
+    .chip:hover .copy-hint { opacity: 1; }
+    .copy-hint { opacity: 0; font-size: 10px; font-weight: 500; letter-spacing: 0.05em; position: absolute; top: 6px; right: 8px; background: rgba(0,0,0,0.25); color: white; border-radius: 5px; padding: 2px 6px; transition: opacity 0.15s; }
+    .chip-name { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+    .chip-hex { font-size: 11px; font-family: monospace; opacity: 0.75; }
+    .chip-use { font-size: 10px; opacity: 0.6; margin-top: 4px; }
+    .swatch-lg { height: 72px; border-radius: 10px; margin-bottom: 10px; }
+    .grad-label { font-size: 11px; color: #6B7280; font-family: monospace; }
+    .grad-use { font-size: 10px; color: #9CA3AF; margin-top: 2px; }
+    .nav-demo { background: #13293D; border-radius: 12px; padding: 12px; display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .nav-item { padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .toast { position: fixed; bottom: 20px; right: 20px; background: #13293D; color: white; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 999; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+    .card { background: white; border-radius: 14px; padding: 20px; box-shadow: 0 1px 8px rgba(19,41,61,0.08); margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+
+<div class="toast" id="toast">Copiado!</div>
+
+<h1>Paleta ARS — Identidade Adventista</h1>
+<p class="subtitle">Clique em qualquer cor para copiar o hex</p>
+
+<div class="card">
+  <div class="section">
+    <div class="section-title">Identidade principal — Adventista</div>
+    <div class="row">
+      <div class="chip" style="background:#13293D; color:white;" onclick="copy('#13293D')">
+        <span class="copy-hint">copiar</span>
+        <div class="chip-name">Prussian Blue</div>
+        <div class="chip-hex">#13293D</div>
+        <div class="chip-use">Sidebar, fundo escuro</div>
+      </div>
+      <div class="chip" style="background:#006494; color:white;" onclick="copy('#006494')">
+        <span class="copy-hint">copiar</span>
+        <div class="chip-name">Sapphire Blue</div>
+        <div class="chip-hex">#006494</div>
+        <div class="chip-use">Primária, botões</div>
+      </div>
+      <div class="chip" style="background:#1B98E0; color:white;" onclick="copy('#1B98E0')">
+        <span class="copy-hint">copiar</span>
+        <div class="chip-name">Carolina Blue</div>
+        <div class="chip-hex">#1B98E0</div>
+        <div class="chip-use">Destaques, ícones</div>
+      </div>
+      <div class="chip" style="background:#247BA0; color:white;" onclick="copy('#247BA0')">
+        <span class="copy-hint">copiar</span>
+        <div class="chip-name">Steel Blue</div>
+        <div class="chip-hex">#247BA0</div>
+        <div class="chip-use">Textos secundários</div>
+      </div>
+      <div class="chip" style="background:#E8F1F2; color:#13293D; border: 1px solid #D4E8F0;" onclick="copy('#E8F1F2')">
+        <span class="copy-hint" style="background:rgba(0,0,0,0.12); color:#13293D;">copiar</span>
+        <div class="chip-name">Azure</div>
+        <div class="chip-hex">#E8F1F2</div>
+        <div class="chip-use">Fundo claro, cards</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section">
+    <div class="section-title">Bordas e sombras</div>
+    <div class="row">
+      <div class="chip" style="background:#D4E8F0; color:#13293D; border: 1px solid #c0d8e8;" onclick="copy('#D4E8F0')">
+        <span class="copy-hint" style="background:rgba(0,0,0,0.12); color:#13293D;">copiar</span>
+        <div class="chip-name">Borda header</div>
+        <div class="chip-hex">#D4E8F0</div>
+        <div class="chip-use">border-color do topo</div>
+      </div>
+      <div class="chip" style="background:#f4f8fa; color:#13293D; border: 1px solid #e0ecf2;" onclick="copy('rgba(19,41,61,0.08)')">
+        <span class="copy-hint" style="background:rgba(0,0,0,0.12); color:#13293D;">copiar</span>
+        <div class="chip-name">Sombra suave</div>
+        <div class="chip-hex">rgba(19,41,61,0.08)</div>
+        <div class="chip-use">box-shadow cards</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section">
+    <div class="section-title">Cores dos menus (Flat UI) — cada item tem sua cor</div>
+    <div class="nav-demo">
+      <div class="nav-item" style="background:rgba(27,152,224,0.18); color:#1B98E0;"><div class="dot" style="background:#1B98E0;"></div>Dashboard</div>
+      <div class="nav-item" style="background:rgba(26,188,156,0.18); color:#1ABC9C;"><div class="dot" style="background:#1ABC9C;"></div>Atividades</div>
+      <div class="nav-item" style="background:rgba(46,204,113,0.18); color:#2ECC71;"><div class="dot" style="background:#2ECC71;"></div>Calendário</div>
+      <div class="nav-item" style="background:rgba(155,89,182,0.18); color:#9B59B6;"><div class="dot" style="background:#9B59B6;"></div>Departamentos</div>
+      <div class="nav-item" style="background:rgba(230,126,34,0.18); color:#E67E22;"><div class="dot" style="background:#E67E22;"></div>Empresas</div>
+      <div class="nav-item" style="background:rgba(231,76,60,0.18); color:#E74C3C;"><div class="dot" style="background:#E74C3C;"></div>Usuários</div>
+      <div class="nav-item" style="background:rgba(241,196,15,0.18); color:#F1C40F;"><div class="dot" style="background:#F1C40F;"></div>Etiquetas</div>
+      <div class="nav-item" style="background:rgba(149,165,166,0.18); color:#95A5A6;"><div class="dot" style="background:#95A5A6;"></div>Configurações</div>
+    </div>
+    <div class="row">
+      <div class="chip" style="background:#1B98E0; color:white;" onclick="copy('#1B98E0')"><span class="copy-hint">copiar</span><div class="chip-name">Dashboard</div><div class="chip-hex">#1B98E0</div></div>
+      <div class="chip" style="background:#1ABC9C; color:white;" onclick="copy('#1ABC9C')"><span class="copy-hint">copiar</span><div class="chip-name">Atividades</div><div class="chip-hex">#1ABC9C</div></div>
+      <div class="chip" style="background:#2ECC71; color:white;" onclick="copy('#2ECC71')"><span class="copy-hint">copiar</span><div class="chip-name">Calendário</div><div class="chip-hex">#2ECC71</div></div>
+      <div class="chip" style="background:#9B59B6; color:white;" onclick="copy('#9B59B6')"><span class="copy-hint">copiar</span><div class="chip-name">Departamentos</div><div class="chip-hex">#9B59B6</div></div>
+      <div class="chip" style="background:#E67E22; color:white;" onclick="copy('#E67E22')"><span class="copy-hint">copiar</span><div class="chip-name">Empresas</div><div class="chip-hex">#E67E22</div></div>
+      <div class="chip" style="background:#E74C3C; color:white;" onclick="copy('#E74C3C')"><span class="copy-hint">copiar</span><div class="chip-name">Usuários</div><div class="chip-hex">#E74C3C</div></div>
+      <div class="chip" style="background:#F1C40F; color:#7a6200;" onclick="copy('#F1C40F')"><span class="copy-hint" style="background:rgba(0,0,0,0.15);color:#7a6200;">copiar</span><div class="chip-name">Etiquetas</div><div class="chip-hex">#F1C40F</div></div>
+      <div class="chip" style="background:#95A5A6; color:white;" onclick="copy('#95A5A6')"><span class="copy-hint">copiar</span><div class="chip-name">Configurações</div><div class="chip-hex">#95A5A6</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section">
+    <div class="section-title">Gradientes usados no sistema</div>
+    <div class="row">
+      <div style="flex:1; min-width:180px; cursor:pointer;" onclick="copy('linear-gradient(135deg, #13293D 0%, #006494 50%, #247BA0 100%)')">
+        <div class="swatch-lg" style="background: linear-gradient(135deg, #13293D 0%, #006494 50%, #247BA0 100%);"></div>
+        <div class="grad-label">linear-gradient(135deg, #13293D, #006494, #247BA0)</div>
+        <div class="grad-use">Fundo da tela de login</div>
+      </div>
+      <div style="flex:1; min-width:180px; cursor:pointer;" onclick="copy('linear-gradient(135deg, #1B98E0, #006494)')">
+        <div class="swatch-lg" style="background: linear-gradient(135deg, #1B98E0, #006494);"></div>
+        <div class="grad-label">linear-gradient(135deg, #1B98E0, #006494)</div>
+        <div class="grad-use">Logo, botão primário</div>
+      </div>
+      <div style="flex:1; min-width:180px; cursor:pointer;" onclick="copy('linear-gradient(135deg, #006494, #13293D)')">
+        <div class="swatch-lg" style="background: linear-gradient(135deg, #006494, #13293D);"></div>
+        <div class="grad-label">linear-gradient(135deg, #006494, #13293D)</div>
+        <div class="grad-use">Botão de submit, ações</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function copy(value) {
+    navigator.clipboard.writeText(value).catch(() => {});
+    const t = document.getElementById('toast');
+    t.textContent = value + ' copiado!';
+    t.style.opacity = '1';
+    setTimeout(() => t.style.opacity = '0', 2000);
+  }
+</script>
+
+</body>
+</html>
