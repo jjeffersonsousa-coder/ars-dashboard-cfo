@@ -1,13 +1,15 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
+import { getSession, clearSession, type Session } from "@/lib/auth"
+import { NIVEL_LABEL } from "@/data/usuarios"
 import {
   LayoutDashboard, DollarSign, HandCoins, Rocket,
   CalendarDays, CheckSquare, BookOpen, HelpCircle,
-  CalendarRange, Settings, BarChart3,
+  CalendarRange, Settings, BarChart3, LogOut,
 } from "lucide-react"
 
 const ALL_NAV = [
@@ -27,41 +29,30 @@ const BOTTOM_NAV = [
   { href: "/configuracoes", icon: Settings, label: "Configurações", color: "#95A5A6" },
 ]
 
-// ── Permissions ───────────────────────────────────────────────────────────────
-export const PERMS_KEY = "ars_permissions"
-export const CURRENT_USER_KEY = "ars_current_user"
-
-export function getCurrentUser(): string {
-  if (typeof window === "undefined") return "jefferson"
-  return localStorage.getItem(CURRENT_USER_KEY) || "jefferson"
-}
-
-export function loadPerms(): Record<string, Record<string, boolean>> {
-  if (typeof window === "undefined") return {}
-  try { return JSON.parse(localStorage.getItem(PERMS_KEY) || "{}") } catch { return {} }
-}
-
-export function savePerms(p: Record<string, Record<string, boolean>>) {
-  localStorage.setItem(PERMS_KEY, JSON.stringify(p))
-}
-
-// Admin (jefferson) always has full access
-function canAccess(userId: string, route: string): boolean {
-  if (userId === "jefferson") return true
-  const perms = loadPerms()
-  const up = perms[userId]
-  if (!up) return false
-  return up[route] !== false
-}
-
 export function Sidebar({ open }: { open: boolean }) {
   const pathname = usePathname()
-  const [visibleNav, setVisibleNav] = useState(ALL_NAV)
+  const router = useRouter()
+  const [session, setSession] = useState<Session | null>(null)
 
   useEffect(() => {
-    const userId = getCurrentUser()
-    setVisibleNav(ALL_NAV.filter(item => canAccess(userId, item.href)))
+    setSession(getSession())
   }, [])
+
+  function canAccess(href: string): boolean {
+    if (!session) return false
+    if (session.nivel === 1 || session.menus.length === 0) return true
+    return session.menus.includes(href)
+  }
+
+  function handleLogout() {
+    clearSession()
+    router.replace("/login")
+  }
+
+  const visibleNav = ALL_NAV.filter(item => canAccess(item.href))
+  const visibleBottom = BOTTOM_NAV.filter(item =>
+    session?.nivel === 1 || session?.menus.includes(item.href) || session?.menus.length === 0
+  )
 
   function NavLink({ href, icon: Icon, label, color }: { href: string; icon: React.ElementType; label: string; color: string }) {
     const active = pathname.startsWith(href) && (href !== "/" || pathname === "/")
@@ -73,7 +64,7 @@ export function Sidebar({ open }: { open: boolean }) {
           "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
           active ? "text-white" : "text-slate-400 hover:text-white"
         )}
-        style={active ? { backgroundColor: color + "33", color: color } : {}}
+        style={active ? { backgroundColor: color + "33", color } : {}}
         onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.07)" }}
         onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.backgroundColor = "" }}
       >
@@ -110,16 +101,33 @@ export function Sidebar({ open }: { open: boolean }) {
 
       {/* Bottom */}
       <div className="py-3 px-2 space-y-0.5" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        {BOTTOM_NAV.map(item => <NavLink key={item.href} {...item} />)}
+        {visibleBottom.map(item => <NavLink key={item.href} {...item} />)}
+
+        {/* Logout */}
         {open && (
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-red-400 transition-all"
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(220,38,38,0.1)" }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "" }}
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            <span>Sair</span>
+          </button>
+        )}
+
+        {/* User info */}
+        {open && session && (
           <div className="flex items-center gap-3 px-3 py-2.5 mt-1">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-white"
               style={{ background: "linear-gradient(135deg, #1B98E0, #006494)" }}>
-              JS
+              {session.initials}
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-medium text-white leading-none truncate">Jefferson Santos</p>
-              <p className="text-xs mt-0.5 truncate" style={{ color: "#1B98E0" }}>Administrador</p>
+              <p className="text-sm font-medium text-white leading-none truncate">{session.nome}</p>
+              <p className="text-xs mt-0.5 truncate" style={{ color: "#1B98E0" }}>
+                {NIVEL_LABEL[session.nivel as keyof typeof NIVEL_LABEL] ?? "Usuário"}
+              </p>
             </div>
           </div>
         )}

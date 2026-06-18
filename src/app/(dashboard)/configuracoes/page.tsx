@@ -7,10 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
   Users, Building2, ShieldCheck, Lock, UserCog, Plus, Search,
-  Edit2, Trash2, Eye, EyeOff, ImageIcon, Upload, X,
+  Edit2, Trash2, Eye, EyeOff, ImageIcon, Upload, X, KeyRound,
 } from "lucide-react"
+import { getAllUsuarios, USUARIOS_BASE, NIVEL_LABEL, type Usuario as UsuarioAuth, normalizeCpf } from "@/data/usuarios"
+import { getSession } from "@/lib/auth"
 
 const LOGO_KEY = "ars_logo_base64"
+const EXTRA_USERS_KEY = "ars_usuarios_extra"
 import { DEPT_RESPONSAVEIS, RESPONSAVEIS_UNICOS } from "@/data/responsaveis"
 import { ORCAMENTO_2026 } from "@/data/orcamento-2026"
 
@@ -342,7 +345,7 @@ const AVATAR_COLORS = ["#006494", "#1ABC9C", "#9B59B6", "#E67E22", "#E74C3C", "#
 function avatarColor(id: number) { return AVATAR_COLORS[id % AVATAR_COLORS.length] }
 
 // ── Componente principal ────────────────────────────────────────────────────
-type Tab = "usuarios" | "departamentos" | "funcoes" | "permissoes" | "atribuicoes" | "marca"
+type Tab = "usuarios" | "acesso" | "departamentos" | "funcoes" | "permissoes" | "atribuicoes" | "marca"
 
 export default function ConfiguracoesPage() {
   const [tab, setTab] = useState<Tab>("usuarios")
@@ -356,6 +359,11 @@ export default function ConfiguracoesPage() {
   const [buscaDepto, setBuscaDepto] = useState("")
   const [logoBase64, setLogoBase64] = useState<string>("")
   const [logoDragOver, setLogoDragOver] = useState(false)
+  const [usuarios, setUsuarios] = useState<UsuarioAuth[]>([])
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [showAddUser, setShowAddUser] = useState(false)
+  const [editUser, setEditUser] = useState<UsuarioAuth | null>(null)
+  const [novoUser, setNovoUser] = useState<Partial<UsuarioAuth>>({ nivel: 5, ativo: true, menus: [] })
 
   useEffect(() => {
     setPerms(loadPerms())
@@ -365,7 +373,53 @@ export default function ConfiguracoesPage() {
     setAllResps([...set].sort())
     const logo = localStorage.getItem(LOGO_KEY) || ""
     setLogoBase64(logo)
+    setUsuarios(getAllUsuarios())
+    const sess = getSession()
+    setIsAdmin(sess?.nivel === 1)
   }, [])
+
+  function saveExtraUsers(list: UsuarioAuth[]) {
+    // Only save non-base users (or overrides) to localStorage
+    const baseIds = new Set(USUARIOS_BASE.map(u => u.id))
+    const extras = list.filter(u => !baseIds.has(u.id))
+    const overrides = list.filter(u => baseIds.has(u.id) && JSON.stringify(u) !== JSON.stringify(USUARIOS_BASE.find(b => b.id === u.id)))
+    localStorage.setItem(EXTRA_USERS_KEY, JSON.stringify([...extras, ...overrides]))
+    setUsuarios(getAllUsuarios())
+  }
+
+  function maskCpf(v: string) {
+    const d = v.replace(/\D/g,"").slice(0,11)
+    return d.replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")
+  }
+
+  function maskData(v: string) {
+    const d = v.replace(/\D/g,"").slice(0,8)
+    return d.replace(/(\d{2})(\d)/,"$1/$2").replace(/(\d{2})(\d)/,"$1/$2")
+  }
+
+  function handleSaveUser() {
+    const u = editUser ?? novoUser as UsuarioAuth
+    if (!u.nome || !u.cpf || !u.dataNascimento) return
+    const newId = u.id ?? `user_${Date.now()}`
+    const saved: UsuarioAuth = {
+      id: newId, nome: u.nome, email: u.email ?? "", cpf: normalizeCpf(u.cpf),
+      dataNascimento: u.dataNascimento ?? "", nivel: u.nivel ?? 5,
+      ativo: u.ativo !== false, menus: u.menus ?? [],
+    }
+    const updated = [...usuarios.filter(x => x.id !== saved.id), saved]
+    saveExtraUsers(updated)
+    setShowAddUser(false); setEditUser(null); setNovoUser({ nivel: 5, ativo: true, menus: [] })
+  }
+
+  function handleDeleteUser(id: string) {
+    const updated = usuarios.filter(u => u.id !== id)
+    saveExtraUsers(updated)
+  }
+
+  function toggleMenu(u: Partial<UsuarioAuth>, href: string) {
+    const cur = u.menus ?? []
+    return cur.includes(href) ? cur.filter(m => m !== href) : [...cur, href]
+  }
 
   function handleLogoFile(file: File) {
     if (!file.type.startsWith("image/")) return
@@ -385,6 +439,7 @@ export default function ConfiguracoesPage() {
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "usuarios", label: "Usuários", icon: Users },
+    { id: "acesso", label: "Acesso / Login", icon: KeyRound },
     { id: "departamentos", label: "Departamentos", icon: Building2 },
     { id: "funcoes", label: "Funções e Níveis", icon: ShieldCheck },
     { id: "permissoes", label: "Permissões", icon: Lock },
@@ -477,7 +532,7 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* Busca */}
-      {tab !== "funcoes" && tab !== "permissoes" && tab !== "atribuicoes" && tab !== "marca" && (
+      {tab !== "funcoes" && tab !== "permissoes" && tab !== "atribuicoes" && tab !== "marca" && tab !== "acesso" && (
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
@@ -747,6 +802,198 @@ export default function ConfiguracoesPage() {
               </div>
               <div className="px-4 py-3 text-xs text-slate-400" style={{ borderTop: "1px solid #D4E8F0" }}>
                 Alterações são salvas automaticamente no navegador. Usuários afetados precisam recarregar a página.
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ── Tab: Acesso / Login ────────────────────────────────────────────── */}
+      {tab === "acesso" && (
+        <div className="space-y-4">
+          <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: "#E8F1F2", border: "1px solid #D4E8F0" }}>
+            <p className="font-semibold text-slate-700 mb-1">Gerenciamento de acesso ao sistema</p>
+            <p className="text-slate-600">Cadastre usuários com CPF e data de nascimento. O login é feito com essas credenciais. Defina quais menus cada usuário pode acessar.</p>
+          </div>
+
+          {isAdmin && (
+            <div className="flex justify-end">
+              <Button onClick={() => { setShowAddUser(true); setEditUser(null); setNovoUser({ nivel: 5, ativo: true, menus: [] }) }}
+                className="gap-2" style={{ backgroundColor: "#006494" }}>
+                <Plus className="w-4 h-4" />Novo Usuário
+              </Button>
+            </div>
+          )}
+
+          {/* Modal add/edit */}
+          {(showAddUser || editUser) && (() => {
+            const u = editUser ?? novoUser
+            function updateU(updates: Partial<UsuarioAuth>) {
+              if (editUser) {
+                setEditUser(prev => prev ? { ...prev, ...updates } : null)
+              } else {
+                setNovoUser(prev => ({ ...prev, ...updates }))
+              }
+            }
+            const ALL_MENUS = [
+              { href: "/dashboard", label: "Dashboard" },
+              { href: "/orcamento", label: "Orçamento" },
+              { href: "/make-a-budget", label: "Make a Budget" },
+              { href: "/subvencoes", label: "Subvenções" },
+              { href: "/implementacoes", label: "Implementações" },
+              { href: "/reunioes", label: "Reuniões" },
+              { href: "/decisoes", label: "Decisões" },
+              { href: "/pop", label: "POP" },
+              { href: "/eventos", label: "Eventos" },
+              { href: "/help", label: "Help / Base IA" },
+              { href: "/configuracoes", label: "Configurações" },
+            ]
+            return (
+              <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}>
+                <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                  <h3 className="text-sm font-bold mb-4" style={{ color: "#13293D" }}>
+                    {editUser ? "Editar Usuário" : "Novo Usuário"}
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <label className="text-xs font-medium text-slate-600 block mb-1">Nome completo *</label>
+                        <input value={u.nome ?? ""} onChange={e => updateU({ nome: e.target.value })}
+                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400" placeholder="Nome completo" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600 block mb-1">CPF *</label>
+                        <input value={u.cpf ?? ""} onChange={e => updateU({ cpf: maskCpf(e.target.value) })}
+                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400 font-mono" placeholder="000.000.000-00" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600 block mb-1">Data de Nascimento *</label>
+                        <input value={u.dataNascimento ?? ""} onChange={e => updateU({ dataNascimento: maskData(e.target.value) })}
+                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400 font-mono" placeholder="DD/MM/AAAA" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600 block mb-1">E-mail</label>
+                        <input value={u.email ?? ""} onChange={e => updateU({ email: e.target.value })}
+                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400" placeholder="email@ars.org" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600 block mb-1">Nível de acesso</label>
+                        <select value={u.nivel ?? 5} onChange={e => updateU({ nivel: Number(e.target.value) as NivelAcesso })}
+                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400">
+                          {Object.entries(NIVEL_LABEL).map(([n, l]) => (
+                            <option key={n} value={n}>{n} — {l}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 block mb-2">Menus permitidos</label>
+                      <p className="text-xs text-slate-400 mb-2">Se nenhum for selecionado, o usuário terá acesso a todos (somente nível 1).</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {ALL_MENUS.map(m => {
+                          const active = (u.menus ?? []).includes(m.href)
+                          return (
+                            <button key={m.href} type="button"
+                              onClick={() => updateU({ menus: toggleMenu(u, m.href) })}
+                              className="text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2 border transition-all"
+                              style={{ borderColor: active ? "#006494" : "#E2E8F0", background: active ? "#E8F1F2" : "#F8FAFC", color: active ? "#006494" : "#64748B", fontWeight: active ? 600 : 400 }}>
+                              <span className="w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center"
+                                style={{ borderColor: active ? "#006494" : "#CBD5E1", background: active ? "#006494" : "transparent" }}>
+                                {active && <span className="text-white text-xs leading-none">✓</span>}
+                              </span>
+                              {m.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <input type="checkbox" id="ativo" checked={u.ativo !== false}
+                        onChange={e => updateU({ ativo: e.target.checked })} />
+                      <label htmlFor="ativo" className="text-sm text-slate-600">Usuário ativo</label>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-5">
+                    <button onClick={() => { setShowAddUser(false); setEditUser(null) }}
+                      className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">Cancelar</button>
+                    <button onClick={handleSaveUser}
+                      className="flex-1 px-3 py-2 text-sm rounded-lg text-white font-medium"
+                      style={{ background: "#006494" }}>Salvar</button>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
+          <Card>
+            <CardContent className="p-0">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #D4E8F0" }}>
+                    <th className="text-left py-3 px-4 font-semibold text-slate-600">Usuário</th>
+                    <th className="text-left py-3 px-4 font-semibold text-slate-600">CPF</th>
+                    <th className="text-left py-3 px-4 font-semibold text-slate-600">Nasc.</th>
+                    <th className="text-left py-3 px-4 font-semibold text-slate-600">Nível</th>
+                    <th className="text-left py-3 px-4 font-semibold text-slate-600">Menus</th>
+                    <th className="text-center py-3 px-4 font-semibold text-slate-600">Status</th>
+                    {isAdmin && <th className="py-3 px-4" />}
+                  </tr>
+                </thead>
+                <tbody>
+                  {usuarios.map(u => (
+                    <tr key={u.id} className="hover:bg-slate-50 transition-colors" style={{ borderBottom: "1px solid #f0f4f6" }}>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                            style={{ background: `linear-gradient(135deg, #1B98E0, #006494)` }}>
+                            {u.nome.split(" ").slice(0,2).map(p=>p[0]).join("")}
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-800 text-sm leading-none">{u.nome}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">{u.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 font-mono text-xs text-slate-500">
+                        {u.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4")}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-xs text-slate-500">{u.dataNascimento}</td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                          {u.nivel} — {NIVEL_LABEL[u.nivel]}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-xs text-slate-500">
+                        {u.menus.length === 0 ? <span className="text-amber-600 font-medium">Todos (admin)</span>
+                          : `${u.menus.length} menu(s)`}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.ativo ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}>
+                          {u.ativo ? "Ativo" : "Inativo"}
+                        </span>
+                      </td>
+                      {isAdmin && (
+                        <td className="py-3 px-4">
+                          <div className="flex gap-1 justify-end">
+                            <button onClick={() => setEditUser({ ...u })} className="p-1.5 rounded hover:bg-slate-100">
+                              <Edit2 className="w-3.5 h-3.5 text-slate-400" />
+                            </button>
+                            {!USUARIOS_BASE.find(b => b.id === u.id) && (
+                              <button onClick={() => handleDeleteUser(u.id)} className="p-1.5 rounded hover:bg-red-50">
+                                <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="px-4 py-3 text-xs text-slate-400" style={{ borderTop: "1px solid #D4E8F0" }}>
+                {usuarios.length} usuário(s) cadastrado(s) · Login via CPF + Data de Nascimento
               </div>
             </CardContent>
           </Card>

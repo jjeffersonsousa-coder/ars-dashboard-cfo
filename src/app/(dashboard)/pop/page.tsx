@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, BookOpen, Edit2, Clock, CheckCircle2, AlertTriangle, Building2 } from "lucide-react"
+import { Plus, BookOpen, Edit2, Clock, CheckCircle2, AlertTriangle, Building2, Lock } from "lucide-react"
+import { getSession } from "@/lib/auth"
 
 interface Pop {
   id: number
@@ -21,7 +22,6 @@ interface Pop {
 }
 
 const mockData: Pop[] = [
-  // USeB POPs — importados dos PDFs
   {
     id: 1,
     codigo: "POP-001/2026",
@@ -125,7 +125,6 @@ PRESTAÇÃO DE CONTAS:
 • Reembolso mediante apresentação de notas fiscais com CPF do obreiro, cônjuge e filho dependente
 • Relatar no relatório mensal na verba "Viagem Especiais – Assistência Médica"`,
   },
-  // POPs internos
   {
     id: 4,
     codigo: "POP-FIN-001",
@@ -211,6 +210,13 @@ export default function PopPage() {
   const [categoria, setCategoria] = useState("Todas")
   const [origem, setOrigem] = useState("Todas")
   const [selected, setSelected] = useState<number | null>(null)
+  const [canEdit, setCanEdit] = useState(false)
+
+  useEffect(() => {
+    const session = getSession()
+    // Apenas Super Admin (1) e Tesoureiro (2) podem editar
+    setCanEdit((session?.nivel ?? 99) <= 2)
+  }, [])
 
   const filtered = mockData.filter((d) => {
     if (categoria !== "Todas" && d.categoria !== categoria) return false
@@ -224,11 +230,19 @@ export default function PopPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Procedimentos Operacionais Padrão</h2>
-          <p className="text-slate-500 mt-1">Criação e gestão de POPs institucionais</p>
+          <p className="text-slate-500 mt-1">
+            {canEdit ? "Criação e gestão de POPs institucionais" : "Visualização de POPs institucionais"}
+          </p>
         </div>
-        <Button className="gap-2" style={{ backgroundColor: "#006494" }}>
-          <Plus className="w-4 h-4" /> Novo POP
-        </Button>
+        {canEdit ? (
+          <Button className="gap-2" style={{ backgroundColor: "#006494" }}>
+            <Plus className="w-4 h-4" /> Novo POP
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-500" style={{ background: "#F1F5F9", border: "1px solid #E2E8F0" }}>
+            <Lock className="w-3.5 h-3.5" /> Somente leitura
+          </div>
+        )}
       </div>
 
       {/* Filtros */}
@@ -292,6 +306,9 @@ export default function PopPage() {
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${statusColor[item.status]}`}>
+                            {statusIcon[item.status]}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${statusColor[item.status]}`}>
                             {item.status}
                           </span>
                           {alertaRevisao && (
@@ -326,9 +343,15 @@ export default function PopPage() {
                   </div>
                   <h3 className="font-bold text-slate-800 text-base leading-snug">{pop.titulo}</h3>
                 </div>
-                <Button size="sm" variant="outline" className="gap-1 shrink-0">
-                  <Edit2 className="w-3 h-3" /> Editar
-                </Button>
+                {canEdit ? (
+                  <Button size="sm" variant="outline" className="gap-1 shrink-0">
+                    <Edit2 className="w-3 h-3" /> Editar
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-400 shrink-0" style={{ background: "#F1F5F9" }}>
+                    <Lock className="w-3 h-3" /> Leitura
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-sm">
@@ -359,7 +382,7 @@ export default function PopPage() {
                 </div>
               )}
 
-              {!pop.conteudo && (
+              {!pop.conteudo && canEdit && (
                 <div className="pt-2 border-t">
                   <p className="text-sm text-slate-400 italic">Clique em "Editar" para adicionar os passos detalhados do procedimento.</p>
                 </div>

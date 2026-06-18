@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button"
 import {
   ChevronLeft, Plus, Trash2, Printer, CalendarRange,
   MapPin, Users, TrendingUp, TrendingDown, CheckCircle2,
-  Clock, AlertCircle, Circle,
+  Clock, AlertCircle, Circle, X,
 } from "lucide-react"
+import { getSession } from "@/lib/auth"
+import { ORCAMENTO_2026 } from "@/data/orcamento-2026"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Status = "Concluído" | "Em andamento" | "Pendente" | "Atrasado"
@@ -37,7 +39,7 @@ interface EventoData {
   notas: NotaRow[]
 }
 
-interface EventoMeta { id: string; nome: string; dataEvento: string; local: string; participantes: number; status: string }
+interface EventoMeta { id: string; nome: string; dataEvento: string; local: string; participantes: number; status: string; criadoPor: string; criadoPorNome: string; departamento: string }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -149,9 +151,23 @@ function defaultEvento(): EventoData {
   }
 }
 
-const MOCK_LIST: EventoMeta[] = [
-  { id: "evt1", nome: "Retiro ARS | 2026", dataEvento: "13 a 17 de Fevereiro de 2026", local: "CATRE - Satulina", participantes: 105, status: "Em andamento" },
+const EVENTOS_KEY = "ars_eventos_meta"
+const EVENTOS_BASE: EventoMeta[] = [
+  { id: "evt1", nome: "Retiro ARS | 2026", dataEvento: "13 a 17 de Fevereiro de 2026", local: "CATRE - Satulina", participantes: 105, status: "Em andamento", criadoPor: "u02911242599", criadoPorNome: "Jefferson de Sousa Santos", departamento: "geral" },
 ]
+const DEPTOS_EVENTOS = [{ codigo: "geral", nome: "Geral / Institucional" }, ...ORCAMENTO_2026.map(d => ({ codigo: d.codigo, nome: d.nome }))]
+
+function loadEventosMeta(): EventoMeta[] {
+  if (typeof window === "undefined") return EVENTOS_BASE
+  try {
+    const raw = localStorage.getItem(EVENTOS_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch { /* ignore */ }
+  return EVENTOS_BASE
+}
+function saveEventosMeta(list: EventoMeta[]) {
+  localStorage.setItem(EVENTOS_KEY, JSON.stringify(list))
+}
 
 // ─── Input helpers ────────────────────────────────────────────────────────────
 function TI({ value, onChange, className = "" }: { value: string; onChange: (v: string) => void; className?: string }) {
@@ -386,6 +402,22 @@ export default function EventosPage() {
   const [cronoSub, setCronoSub] = useState<CronoSub>("pre")
   const [saveState, setSaveState] = useState<"idle"|"saving"|"saved">("idle")
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const [eventosList, setEventosList] = useState<EventoMeta[]>([])
+  const [userId, setUserId] = useState("")
+  const [userNome, setUserNome] = useState("")
+  const [userNivel, setUserNivel] = useState(5)
+  const [showNovoModal, setShowNovoModal] = useState(false)
+  const [novoNome, setNovoNome] = useState("")
+  const [novoDept, setNovoDept] = useState("geral")
+
+  // Load session and events list
+  useEffect(() => {
+    const session = getSession()
+    setUserId(session?.userId ?? "")
+    setUserNome(session?.nome ?? "")
+    setUserNivel(session?.nivel ?? 5)
+    setEventosList(loadEventosMeta())
+  }, [])
 
   // Load from localStorage when entering an event
   useEffect(() => {
@@ -443,6 +475,27 @@ export default function EventosPage() {
   const resultado    = totReceitas - totDespesas
   const allTarefas   = [...data.cronogramaPreEvento, ...data.cronogramaDiaEvento, ...data.cronogramaPosEvento]
 
+  function criarEvento() {
+    if (!novoNome.trim()) return
+    const id = uid()
+    const meta: EventoMeta = {
+      id, nome: novoNome.trim(), dataEvento: "", local: "", participantes: 0,
+      status: "Pendente", criadoPor: userId, criadoPorNome: userNome, departamento: novoDept,
+    }
+    const updated = [meta, ...eventosList]
+    saveEventosMeta(updated)
+    setEventosList(updated)
+    setData(defaultEvento())
+    setEventoId(id)
+    setTab("dashboard")
+    setShowNovoModal(false)
+    setNovoNome("")
+    setNovoDept("geral")
+  }
+
+  const podeVerTodos = userNivel <= 2
+  const eventosVisiveis = eventosList.filter(ev => podeVerTodos || ev.criadoPor === userId)
+
   // ─── LIST VIEW ───────────────────────────────────────────────────────────────
   if (!eventoId) {
     return (
@@ -452,22 +505,21 @@ export default function EventosPage() {
             <h2 className="text-2xl font-bold text-slate-800">Gestão de Eventos</h2>
             <p className="text-slate-500 mt-1">Planejamento e controle de eventos da ARS</p>
           </div>
-          <Button
-            className="gap-2" style={{ backgroundColor: "#006494" }}
-            onClick={() => {
-              const id = uid()
-              MOCK_LIST.push({ id, nome: "Novo Evento", dataEvento: "", local: "", participantes: 0, status: "Planejamento" })
-              setData(defaultEvento())
-              setEventoId(id)
-              setTab("dashboard")
-            }}
-          >
+          <Button className="gap-2" style={{ backgroundColor: "#006494" }} onClick={() => setShowNovoModal(true)}>
             <Plus className="w-4 h-4" /> Novo Evento
           </Button>
         </div>
 
+        {eventosVisiveis.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <CalendarRange className="w-12 h-12 text-slate-200 mb-3" />
+            <p className="text-slate-500 font-medium">Nenhum evento encontrado</p>
+            <p className="text-slate-400 text-sm mt-1">Clique em "Novo Evento" para criar o primeiro.</p>
+          </div>
+        )}
+
         <div className="grid gap-4">
-          {MOCK_LIST.map(ev => (
+          {eventosVisiveis.map(ev => (
             <Card key={ev.id} className="cursor-pointer card-hover-glow" onClick={() => { setEventoId(ev.id); setTab("dashboard") }}>
               <CardContent className="pt-5 pb-5">
                 <div className="flex items-center justify-between">
@@ -480,6 +532,11 @@ export default function EventosPage() {
                       <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
                         <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{ev.local || "—"}</span>
                         <span className="flex items-center gap-1"><Users className="w-3 h-3" />{ev.participantes} participantes</span>
+                        {ev.departamento !== "geral" && (
+                          <span className="flex items-center gap-1" style={{ color: "#006494" }}>
+                            {DEPTOS_EVENTOS.find(d => d.codigo === ev.departamento)?.nome ?? ev.departamento}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -488,12 +545,47 @@ export default function EventosPage() {
                       {ev.status}
                     </span>
                     <p className="text-xs text-slate-400 mt-1">{ev.dataEvento || "Data a definir"}</p>
+                    <p className="text-xs text-slate-300 mt-0.5">{ev.criadoPorNome.split(" ")[0]}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
+
+        {/* Modal Novo Evento */}
+        {showNovoModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}>
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-slate-800">Novo Evento</h3>
+                <button onClick={() => setShowNovoModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Nome do evento *</label>
+                  <input value={novoNome} onChange={e => setNovoNome(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400"
+                    placeholder="Ex: Congresso Jovem 2026" autoFocus />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Departamento responsável</label>
+                  <select value={novoDept} onChange={e => setNovoDept(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400">
+                    {DEPTOS_EVENTOS.map(d => <option key={d.codigo} value={d.codigo}>{d.nome}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-5">
+                <button onClick={() => setShowNovoModal(false)}
+                  className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">Cancelar</button>
+                <button onClick={criarEvento}
+                  className="flex-1 px-3 py-2 text-sm rounded-lg text-white font-medium"
+                  style={{ background: "#006494" }}>Criar Evento</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
