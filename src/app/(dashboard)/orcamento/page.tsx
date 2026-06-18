@@ -249,14 +249,17 @@ export default function OrcamentoPage() {
     return respMap[codigo] || []
   }
 
-  // All unique dept names for dropdown
-  const allNomes = [...new Set(data.map(d => d.nome))].sort()
+  // All unique dept options for dropdown — "código — nome"
+  const allNomes = [...new Set(data.map(d => `${d.codigo} — ${d.nome}`))].sort((a, b) => {
+    const ca = a.split(" — ")[0]; const cb = b.split(" — ")[0]
+    return ca.localeCompare(cb, undefined, { numeric: true })
+  })
 
   // All unique responsáveis actually in use
   const allRespsInUse = [...new Set(Object.values(respMap).flat())].sort()
 
   const filtered = data.filter(d => {
-    if (selectedDeptos.length > 0 && !selectedDeptos.includes(d.nome)) return false
+    if (selectedDeptos.length > 0 && !selectedDeptos.some(opt => opt.startsWith(d.codigo + " — "))) return false
     if (selectedResps.length > 0) {
       const resps = getResps(d.codigo)
       if (!selectedResps.some(r => resps.includes(r))) return false
