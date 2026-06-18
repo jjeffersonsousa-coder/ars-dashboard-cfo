@@ -237,11 +237,16 @@ export default function OrcamentoPage() {
   const [importStatus, setImportStatus] = useState<ImportStatus>("idle")
   const [importMsg, setImportMsg] = useState("")
   const [showImportHint, setShowImportHint] = useState(false)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setData(loadData())
     setRespMap(loadRespMap())
+    try {
+      const sess = JSON.parse(localStorage.getItem("ars_auth_session") || "null")
+      setIsSuperAdmin(sess?.nivel === 1)
+    } catch { /* ignore */ }
   }, [])
 
   // Get responsáveis for each dept row
@@ -321,18 +326,20 @@ export default function OrcamentoPage() {
             </span>
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
-          <Button className="gap-2" style={{ backgroundColor: "#006494" }}
-            onClick={() => fileInputRef.current?.click()} disabled={importStatus === "loading"}>
-            {importStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            Importar Balancete
-          </Button>
-          <button onClick={() => setShowImportHint(!showImportHint)}
-            className="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2">
-            Como importar?
-          </button>
-        </div>
+        {isSuperAdmin && (
+          <div className="flex flex-col items-end gap-1">
+            <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
+            <Button className="gap-2" style={{ backgroundColor: "#006494" }}
+              onClick={() => fileInputRef.current?.click()} disabled={importStatus === "loading"}>
+              {importStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              Importar Balancete
+            </Button>
+            <button onClick={() => setShowImportHint(!showImportHint)}
+              className="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2">
+              Como importar?
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Import hint */}
