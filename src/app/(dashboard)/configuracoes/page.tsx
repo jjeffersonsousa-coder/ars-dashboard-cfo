@@ -348,7 +348,7 @@ function avatarColor(id: number) { return AVATAR_COLORS[id % AVATAR_COLORS.lengt
 type Tab = "usuarios" | "acesso" | "departamentos" | "funcoes" | "permissoes" | "atribuicoes" | "marca"
 
 export default function ConfiguracoesPage() {
-  const [tab, setTab] = useState<Tab>("usuarios")
+  const [tab, setTab] = useState<Tab>("acesso")
   const [busca, setBusca] = useState("")
   const [showCpf, setShowCpf] = useState<number | null>(null)
   const [perms, setPerms] = useState<Record<string, Record<string, boolean>>>({})
@@ -438,8 +438,7 @@ export default function ConfiguracoesPage() {
   }
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
-    { id: "usuarios", label: "Usuários", icon: Users },
-    { id: "acesso", label: "Acesso / Login", icon: KeyRound },
+    { id: "acesso", label: "Usuários / Acesso", icon: Users },
     { id: "departamentos", label: "Departamentos", icon: Building2 },
     { id: "funcoes", label: "Funções e Níveis", icon: ShieldCheck },
     { id: "permissoes", label: "Permissões", icon: Lock },
@@ -509,10 +508,13 @@ export default function ConfiguracoesPage() {
           <h2 className="text-2xl font-bold text-slate-800">Configurações</h2>
           <p className="text-slate-500 mt-1">Gerenciamento de usuários, departamentos e níveis de acesso</p>
         </div>
-        <Button className="gap-2" style={{ backgroundColor: "#006494" }}>
-          <Plus className="w-4 h-4" />
-          {tab === "usuarios" ? "Novo Usuário" : tab === "departamentos" ? "Novo Departamento" : "Nova Função"}
-        </Button>
+        {(tab === "acesso" && isAdmin) && (
+          <Button className="gap-2" style={{ backgroundColor: "#006494" }}
+            onClick={() => { setShowAddUser(true); setEditUser(null); setNovoUser({ nivel: 5, ativo: true, menus: [] }) }}>
+            <Plus className="w-4 h-4" />
+            Novo Usuário
+          </Button>
+        )}
       </div>
 
       {/* Tabs */}

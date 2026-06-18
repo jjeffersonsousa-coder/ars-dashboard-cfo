@@ -77,6 +77,8 @@ export default function ReunioesPage() {
   const [userNome, setUserNome] = useState("")
   const [nivel, setNivel] = useState(5)
   const [nova, setNova] = useState<Partial<Reuniao>>({})
+  const [showAtaModal, setShowAtaModal] = useState(false)
+  const [ataText, setAtaText] = useState("")
 
   useEffect(() => {
     const session = getSession()
@@ -236,8 +238,9 @@ export default function ReunioesPage() {
                   </div>
                 )}
 
-                {!reuniao.ata && reuniao.status !== "Concluída" && reuniao.criadoPor === userId && (
-                  <Button variant="outline" className="w-full gap-2">
+                {!reuniao.ata && reuniao.criadoPor === userId && (
+                  <Button variant="outline" className="w-full gap-2"
+                    onClick={() => { setAtaText(""); setShowAtaModal(true) }}>
                     <FileText className="w-4 h-4" /> Registrar Ata
                   </Button>
                 )}
@@ -248,6 +251,38 @@ export default function ReunioesPage() {
               Selecione uma reunião para ver os detalhes
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modal Registrar Ata */}
+      {showAtaModal && reuniao && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-slate-800">Registrar Ata</h3>
+              <button onClick={() => setShowAtaModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
+            </div>
+            <p className="text-sm text-slate-500 mb-3">{reuniao.titulo} · {new Date(reuniao.data + "T00:00:00").toLocaleDateString("pt-BR")}</p>
+            <div>
+              <label className="text-xs font-medium text-slate-600 block mb-1">Ata / Deliberações *</label>
+              <textarea value={ataText} onChange={e => setAtaText(e.target.value)} rows={8}
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400 resize-none"
+                placeholder="Registre aqui as decisões, deliberações e pontos discutidos na reunião..." />
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setShowAtaModal(false)}
+                className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">Cancelar</button>
+              <button
+                onClick={() => {
+                  if (!ataText.trim()) return
+                  const updated = reunioes.map(r => r.id === reuniao.id ? { ...r, ata: ataText.trim(), status: "Concluída" as const } : r)
+                  saveReunioes(updated); setReunioes(updated)
+                  setShowAtaModal(false)
+                }}
+                className="flex-1 px-3 py-2 text-sm rounded-lg text-white font-medium"
+                style={{ background: "#006494" }}>Salvar Ata</button>
+            </div>
+          </div>
         </div>
       )}
 

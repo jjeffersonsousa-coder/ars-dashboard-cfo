@@ -358,8 +358,8 @@ export default function OrcamentoPage() {
       )}
 
       {/* Filtros */}
-      <Card>
-        <CardContent className="pt-4 pb-5 space-y-4">
+      <Card style={{ overflow: "visible" }}>
+        <CardContent className="pt-4 pb-5 space-y-4" style={{ overflow: "visible" }}>
           {/* Ano + Mês */}
           <div className="flex flex-wrap gap-4 items-start">
             <div className="flex flex-col gap-1">
