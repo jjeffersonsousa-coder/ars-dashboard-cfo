@@ -524,7 +524,7 @@ export default function OrcamentoPage() {
                   <tr>
                     <th className="text-left py-3 px-2 font-semibold text-slate-600 whitespace-nowrap">Cód.</th>
                     <th className="text-left py-3 px-2 font-semibold text-slate-600">Departamento / Conta</th>
-                    <th className="text-left py-3 px-2 font-semibold text-slate-600">Responsável(is)</th>
+                    <th className="text-left py-3 px-2 font-semibold text-slate-600">Responsável(eis)</th>
                     <th className="text-right py-3 px-2 font-semibold text-slate-600 whitespace-nowrap">Orçado Anual</th>
                     <th className="text-right py-3 px-2 font-semibold text-slate-600 whitespace-nowrap">Orç. Período</th>
                     <th className="text-right py-3 px-2 font-semibold text-slate-600 whitespace-nowrap">Realizado</th>
