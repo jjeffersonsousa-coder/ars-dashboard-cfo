@@ -307,10 +307,31 @@ export default function HelpPage() {
     if (activeDocs.length === 0) {
       assistantMsg = { role: "assistant", text: "Nenhum documento ativo. Ative documentos na base de conhecimento." }
     } else if (apiKey) {
-      // Call Claude API with document context
+      // Extract relevant excerpts to stay within token limits
       try {
-        const context = activeDocs.map(d => `[${d.titulo}]\n${d.conteudo}`).join("\n\n---\n\n")
-        const answer = await askGroq(apiKey, question, context.slice(0, 80000))
+        const words = question.toLowerCase().split(/\s+/).filter(w => w.length > 2)
+        const contextParts: string[] = []
+        for (const doc of activeDocs) {
+          const content = doc.conteudo
+          const lower = content.toLowerCase()
+          const hits: number[] = []
+          for (const w of words) {
+            let pos = 0
+            while ((pos = lower.indexOf(w, pos)) !== -1) { hits.push(pos); pos += w.length }
+          }
+          // Cluster nearby hits and take top 5 windows
+          const windows = [...new Set(hits.map(p => Math.floor(p / 500)))].slice(0, 5)
+          for (const w of windows) {
+            const start = Math.max(0, w * 500 - 200)
+            const end = Math.min(content.length, w * 500 + 700)
+            contextParts.push(`[${doc.titulo}]\n${content.slice(start, end).replace(/\[Página \d+\]\n?/g, '').trim()}`)
+          }
+        }
+        // Fallback: send first 3000 chars of each doc if no hits
+        const context = contextParts.length > 0
+          ? contextParts.join("\n\n---\n\n").slice(0, 12000)
+          : activeDocs.map(d => `[${d.titulo}]\n${d.conteudo.slice(0, 3000)}`).join("\n\n---\n\n")
+        const answer = await askGroq(apiKey, question, context)
         assistantMsg = { role: "assistant", text: answer }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Erro desconhecido"
