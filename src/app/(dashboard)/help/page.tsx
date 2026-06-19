@@ -221,7 +221,7 @@ const CLAUDE_API_KEY = "ars_claude_api_key"
 async function askGemini(apiKey: string, question: string, context: string): Promise<string> {
   const prompt = `Você é o assistente financeiro da ARS (Associação Rio Sul da IASD). Responda APENAS com base nos documentos fornecidos. Dê respostas diretas, objetivas e em português brasileiro. Se a informação não estiver nos documentos, diga claramente.\n\nDocumentos disponíveis:\n\n${context}\n\n---\nPergunta: ${question}`
   const resp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "content-type": "application/json" },
