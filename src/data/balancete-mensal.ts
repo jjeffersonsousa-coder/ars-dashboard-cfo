@@ -777,7 +777,7 @@ export const BALANCETE_MENSAL: Record<string, Partial<Record<MesDisponivel, MesD
     "Fevereiro": { mesOrcado: 214845.01, mesRealizado: 395974.38, acumOrcado: 429690.02, acumRealizado: 802223.43 },
     "Março": { mesOrcado: 214845.01, mesRealizado: 346463.41, acumOrcado: 644535.03, acumRealizado: 1148686.84 },
     "Abril": { mesOrcado: 214845.01, mesRealizado: 288463.38, acumOrcado: 859380.04, acumRealizado: 1437150.22 },
-    "Maio": { mesOrcado: 0.00, mesRealizado: 401.83, acumOrcado: 859380.04, acumRealizado: 1437552.05 },
+    "Maio": { mesOrcado: 214845.01, mesRealizado: 187270.68, acumOrcado: 1074225.05, acumRealizado: 1624420.90 },
   },
   "39602912": {
     "Janeiro": { mesOrcado: 250000.00, mesRealizado: 0.00, acumOrcado: 250000.00, acumRealizado: 0.00 },
