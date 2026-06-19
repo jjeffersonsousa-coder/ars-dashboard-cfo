@@ -226,7 +226,7 @@ async function askGroq(apiKey: string, question: string, context: string): Promi
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.1-8b-instant",
       max_tokens: 1024,
       messages: [
         {
