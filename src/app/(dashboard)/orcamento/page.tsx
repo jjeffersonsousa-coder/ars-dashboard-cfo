@@ -11,6 +11,7 @@ import {
 import { ORCAMENTO_2026, MES_REFERENCIA, ANO_REFERENCIA, type DeptOrcamento } from "@/data/orcamento-2026"
 import { DEPT_RESPONSAVEIS } from "@/data/responsaveis"
 import { BALANCETE_MENSAL, MESES_DISPONIVEIS, type MesDisponivel } from "@/data/balancete-mensal"
+import { BALANCETE_DEPT } from "@/data/balancete-dept"
 
 const anos = ["2026", "2025", "2024"]
 const TODOS_MESES = [
@@ -21,6 +22,21 @@ const MESES_SET = new Set<string>(MESES_DISPONIVEIS)
 
 const STORAGE_KEY = "ars_orcamento_data"
 const RESP_OVERRIDES_KEY = "ars_dept_responsaveis"
+
+const FUNDOS: Record<string, string> = { "10": "Fundo Operacional", "25": "Fundo Imobilizado", "69": "Fundo Publicações" }
+
+// Build dept code → fundo map from BALANCETE_DEPT
+const FUNDO_MAP: Record<string, string> = (() => {
+  const m: Record<string, string> = {}
+  for (const [code, info] of Object.entries(BALANCETE_DEPT)) {
+    m[code] = (info as { fundo: string }).fundo
+  }
+  return m
+})()
+
+function getFundo(codigo: string): string {
+  return FUNDO_MAP[codigo] ?? "10"
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -232,6 +248,7 @@ export default function OrcamentoPage() {
   const [busca, setBusca] = useState("")
   const [selectedDeptos, setSelectedDeptos] = useState<string[]>([])
   const [selectedResps, setSelectedResps] = useState<string[]>([])
+  const [selectedFundos, setSelectedFundos] = useState<string[]>([])
   const [data, setData] = useState<DeptOrcamento[]>(() => loadData())
   const [respMap, setRespMap] = useState<Record<string, string[]>>(() => buildDefaultRespMap())
   const [importStatus, setImportStatus] = useState<ImportStatus>("idle")
@@ -269,6 +286,7 @@ export default function OrcamentoPage() {
       const resps = getResps(d.codigo)
       if (!selectedResps.some(r => resps.includes(r))) return false
     }
+    if (selectedFundos.length > 0 && !selectedFundos.includes(getFundo(d.codigo))) return false
     if (busca && !d.nome.toLowerCase().includes(busca.toLowerCase()) && !d.codigo.includes(busca)) return false
     return true
   })
@@ -449,6 +467,13 @@ export default function OrcamentoPage() {
               selected={selectedResps}
               onChange={setSelectedResps}
             />
+            <MultiSelectDropdown
+              label="Fundo"
+              placeholder="Todos os fundos"
+              options={Object.keys(FUNDOS).map(k => `${k} — ${FUNDOS[k]}`)}
+              selected={selectedFundos.map(k => `${k} — ${FUNDOS[k]}`)}
+              onChange={vals => setSelectedFundos(vals.map(v => v.split(" — ")[0]))}
+            />
           </div>
         </CardContent>
       </Card>
@@ -522,6 +547,7 @@ export default function OrcamentoPage() {
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-white z-10 border-b">
                   <tr>
+                    <th className="text-left py-3 px-2 font-semibold text-slate-600 whitespace-nowrap">Fundo</th>
                     <th className="text-left py-3 px-2 font-semibold text-slate-600 whitespace-nowrap">Cód.</th>
                     <th className="text-left py-3 px-2 font-semibold text-slate-600">Departamento / Conta</th>
                     <th className="text-left py-3 px-2 font-semibold text-slate-600">Responsável(eis)</th>
@@ -541,6 +567,12 @@ export default function OrcamentoPage() {
                     const resps = getResps(row.codigo)
                     return (
                       <tr key={row.codigo} className="border-b last:border-0 hover:bg-slate-50 transition-colors">
+                        <td className="py-2.5 px-2">
+                          <span className="text-xs font-semibold px-1.5 py-0.5 rounded" style={{
+                            backgroundColor: getFundo(row.codigo) === "10" ? "#E8F4FD" : getFundo(row.codigo) === "25" ? "#FDF3E8" : "#F0EDF8",
+                            color: getFundo(row.codigo) === "10" ? "#006494" : getFundo(row.codigo) === "25" ? "#B45309" : "#6D28D9",
+                          }}>{getFundo(row.codigo)}</span>
+                        </td>
                         <td className="py-2.5 px-2 font-mono text-xs text-slate-400">{row.codigo}</td>
                         <td className="py-2.5 px-2 font-medium text-slate-800">{row.nome}</td>
                         <td className="py-2.5 px-2">
