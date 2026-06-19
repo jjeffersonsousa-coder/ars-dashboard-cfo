@@ -64,7 +64,7 @@ export const BALANCETE_MENSAL: Record<string, Partial<Record<MesDisponivel, MesD
     "Fevereiro": { mesOrcado: 0.00, mesRealizado: 2422.70, acumOrcado: 0.00, acumRealizado: 62620.51 },
     "Março": { mesOrcado: 0.00, mesRealizado: 14011.55, acumOrcado: 0.00, acumRealizado: 76632.06 },
     "Abril": { mesOrcado: 0.00, mesRealizado: 20554.02, acumOrcado: 0.00, acumRealizado: 97186.08 },
-    "Maio": { mesOrcado: 0.00, mesRealizado: 39085.73, acumOrcado: 0.00, acumRealizado: 58100.35 },
+    "Maio": { mesOrcado: 0.00, mesRealizado: 39085.73, acumOrcado: 0.00, acumRealizado: 136271.81 },
   },
   "1131111": {
     "Janeiro": { mesOrcado: 29166.66, mesRealizado: 2243.80, acumOrcado: 29166.66, acumRealizado: 2243.80 },
@@ -197,7 +197,7 @@ export const BALANCETE_MENSAL: Record<string, Partial<Record<MesDisponivel, MesD
     "Fevereiro": { mesOrcado: 1250.00, mesRealizado: 401.80, acumOrcado: 2500.00, acumRealizado: 15355.05 },
     "Março": { mesOrcado: 1250.00, mesRealizado: 5918.00, acumOrcado: 3750.00, acumRealizado: 21273.05 },
     "Abril": { mesOrcado: 1250.00, mesRealizado: 0.00, acumOrcado: 5000.00, acumRealizado: 21273.05 },
-    "Maio": { mesOrcado: 1250.00, mesRealizado: 82.64, acumOrcado: 6250.00, acumRealizado: 21190.41 },
+    "Maio": { mesOrcado: 1250.00, mesRealizado: 82.64, acumOrcado: 6250.00, acumRealizado: 21355.69 },
   },
   "1140431": {
     "Abril": { mesOrcado: 0.00, mesRealizado: 3874.71, acumOrcado: 0.00, acumRealizado: 3874.71 },
@@ -256,7 +256,7 @@ export const BALANCETE_MENSAL: Record<string, Partial<Record<MesDisponivel, MesD
   "1140640": {
     "Março": { mesOrcado: 0.00, mesRealizado: 5570.00, acumOrcado: 0.00, acumRealizado: 5570.00 },
     "Abril": { mesOrcado: 0.00, mesRealizado: 8911.30, acumOrcado: 0.00, acumRealizado: 14481.30 },
-    "Maio": { mesOrcado: 0.00, mesRealizado: 100.00, acumOrcado: 0.00, acumRealizado: 14381.30 },
+    "Maio": { mesOrcado: 0.00, mesRealizado: 100.00, acumOrcado: 0.00, acumRealizado: 14581.30 },
   },
   "1140642": {
     "Janeiro": { mesOrcado: 0.00, mesRealizado: 10336.84, acumOrcado: 0.00, acumRealizado: 10336.84 },
@@ -282,7 +282,7 @@ export const BALANCETE_MENSAL: Record<string, Partial<Record<MesDisponivel, MesD
   "1140721": {
     "Março": { mesOrcado: 0.00, mesRealizado: 115.90, acumOrcado: 0.00, acumRealizado: 115.90 },
     "Abril": { mesOrcado: 0.00, mesRealizado: 0.00, acumOrcado: 0.00, acumRealizado: 115.90 },
-    "Maio": { mesOrcado: 0.00, mesRealizado: 115.90, acumOrcado: 0.00, acumRealizado: 0.00 },
+    "Maio": { mesOrcado: 0.00, mesRealizado: 115.90, acumOrcado: 0.00, acumRealizado: 231.80 },
   },
   "114081": {
     "Janeiro": { mesOrcado: 1575.00, mesRealizado: 343.20, acumOrcado: 1575.00, acumRealizado: 343.20 },
@@ -294,7 +294,7 @@ export const BALANCETE_MENSAL: Record<string, Partial<Record<MesDisponivel, MesD
   "1140821": {
     "Março": { mesOrcado: 0.00, mesRealizado: 442.50, acumOrcado: 0.00, acumRealizado: 442.50 },
     "Abril": { mesOrcado: 0.00, mesRealizado: 0.00, acumOrcado: 0.00, acumRealizado: 442.50 },
-    "Maio": { mesOrcado: 0.00, mesRealizado: 442.50, acumOrcado: 0.00, acumRealizado: 0.00 },
+    "Maio": { mesOrcado: 0.00, mesRealizado: 442.50, acumOrcado: 0.00, acumRealizado: 885.00 },
   },
   "114091": {
     "Janeiro": { mesOrcado: 3062.50, mesRealizado: 3274.25, acumOrcado: 3062.50, acumRealizado: 3274.25 },
@@ -307,7 +307,7 @@ export const BALANCETE_MENSAL: Record<string, Partial<Record<MesDisponivel, MesD
     "Fevereiro": { mesOrcado: 0.00, mesRealizado: 44.90, acumOrcado: 0.00, acumRealizado: 44.90 },
     "Março": { mesOrcado: 0.00, mesRealizado: 1653.60, acumOrcado: 0.00, acumRealizado: 1698.50 },
     "Abril": { mesOrcado: 0.00, mesRealizado: 0.00, acumOrcado: 0.00, acumRealizado: 1698.50 },
-    "Maio": { mesOrcado: 0.00, mesRealizado: 780.45, acumOrcado: 0.00, acumRealizado: 918.05 },
+    "Maio": { mesOrcado: 0.00, mesRealizado: 780.45, acumOrcado: 0.00, acumRealizado: 2478.95 },
   },
   "114101": {
     "Janeiro": { mesOrcado: 3062.50, mesRealizado: 3964.45, acumOrcado: 3062.50, acumRealizado: 3964.45 },
@@ -368,21 +368,21 @@ export const BALANCETE_MENSAL: Record<string, Partial<Record<MesDisponivel, MesD
     "Fevereiro": { mesOrcado: 1750.00, mesRealizado: 156.55, acumOrcado: 3500.00, acumRealizado: 156.55 },
     "Março": { mesOrcado: 1750.00, mesRealizado: 399.10, acumOrcado: 5250.00, acumRealizado: 555.65 },
     "Abril": { mesOrcado: 1750.00, mesRealizado: 34.26, acumOrcado: 7000.00, acumRealizado: 589.91 },
-    "Maio": { mesOrcado: 1750.00, mesRealizado: 226.79, acumOrcado: 8750.00, acumRealizado: 363.12 },
+    "Maio": { mesOrcado: 1750.00, mesRealizado: 226.79, acumOrcado: 8750.00, acumRealizado: 816.70 },
   },
   "114141": {
     "Janeiro": { mesOrcado: 1575.00, mesRealizado: 4425.00, acumOrcado: 1575.00, acumRealizado: 4425.00 },
     "Fevereiro": { mesOrcado: 1575.00, mesRealizado: 1199.15, acumOrcado: 3150.00, acumRealizado: 5624.15 },
     "Março": { mesOrcado: 1575.00, mesRealizado: 0.00, acumOrcado: 4725.00, acumRealizado: 5624.15 },
     "Abril": { mesOrcado: 1575.00, mesRealizado: 1460.92, acumOrcado: 6300.00, acumRealizado: 7085.07 },
-    "Maio": { mesOrcado: 1575.00, mesRealizado: 10288.94, acumOrcado: 7875.00, acumRealizado: 3203.87 },
+    "Maio": { mesOrcado: 1575.00, mesRealizado: 10288.94, acumOrcado: 7875.00, acumRealizado: 17374.01 },
   },
   "1141421": {
     "Janeiro": { mesOrcado: 0.00, mesRealizado: 9963.00, acumOrcado: 0.00, acumRealizado: 9963.00 },
     "Fevereiro": { mesOrcado: 0.00, mesRealizado: 0.00, acumOrcado: 0.00, acumRealizado: 9963.00 },
     "Março": { mesOrcado: 0.00, mesRealizado: 0.00, acumOrcado: 0.00, acumRealizado: 9963.00 },
     "Abril": { mesOrcado: 0.00, mesRealizado: 788.00, acumOrcado: 0.00, acumRealizado: 9175.00 },
-    "Maio": { mesOrcado: 0.00, mesRealizado: 450.00, acumOrcado: 0.00, acumRealizado: 8725.00 },
+    "Maio": { mesOrcado: 0.00, mesRealizado: 450.00, acumOrcado: 0.00, acumRealizado: 9625.00 },
   },
   "114151": {
     "Janeiro": { mesOrcado: 3062.50, mesRealizado: 5717.94, acumOrcado: 3062.50, acumRealizado: 5717.94 },
@@ -424,7 +424,7 @@ export const BALANCETE_MENSAL: Record<string, Partial<Record<MesDisponivel, MesD
     "Fevereiro": { mesOrcado: 1050.00, mesRealizado: 0.00, acumOrcado: 2100.00, acumRealizado: 0.00 },
     "Março": { mesOrcado: 1050.00, mesRealizado: 960.90, acumOrcado: 3150.00, acumRealizado: 960.90 },
     "Abril": { mesOrcado: 1050.00, mesRealizado: 15901.41, acumOrcado: 14940.51, acumRealizado: 10740.51 },
-    "Maio": { mesOrcado: 1050.00, mesRealizado: 4543.45, acumOrcado: 5250.00, acumRealizado: 10397.06 },
+    "Maio": { mesOrcado: 1050.00, mesRealizado: 4543.45, acumOrcado: 15990.51, acumRealizado: 15283.96 },
   },
   "114171": {
     "Janeiro": { mesOrcado: 1575.00, mesRealizado: 1724.61, acumOrcado: 1575.00, acumRealizado: 1724.61 },
@@ -452,7 +452,7 @@ export const BALANCETE_MENSAL: Record<string, Partial<Record<MesDisponivel, MesD
     "Fevereiro": { mesOrcado: 13750.00, mesRealizado: 912.72, acumOrcado: 27500.00, acumRealizado: 151899.85 },
     "Março": { mesOrcado: 13750.00, mesRealizado: 2381.70, acumOrcado: 41250.00, acumRealizado: 154281.55 },
     "Abril": { mesOrcado: 13750.00, mesRealizado: 19.34, acumOrcado: 55000.00, acumRealizado: 154300.89 },
-    "Maio": { mesOrcado: 13750.00, mesRealizado: 822.12, acumOrcado: 68750.00, acumRealizado: 153478.77 },
+    "Maio": { mesOrcado: 13750.00, mesRealizado: 822.12, acumOrcado: 68750.00, acumRealizado: 155123.01 },
   },
   "1141831": {
     "Janeiro": { mesOrcado: 0.00, mesRealizado: 790.65, acumOrcado: 0.00, acumRealizado: 790.65 },
@@ -728,7 +728,7 @@ export const BALANCETE_MENSAL: Record<string, Partial<Record<MesDisponivel, MesD
     "Fevereiro": { mesOrcado: 3400.00, mesRealizado: 0.00, acumOrcado: 6800.00, acumRealizado: 0.00 },
     "Março": { mesOrcado: 3400.00, mesRealizado: 504.00, acumOrcado: 10200.00, acumRealizado: 504.00 },
     "Abril": { mesOrcado: 3400.00, mesRealizado: 14887.16, acumOrcado: 13600.00, acumRealizado: 14383.16 },
-    "Maio": { mesOrcado: 3400.00, mesRealizado: 11171.87, acumOrcado: 17000.00, acumRealizado: 3211.29 },
+    "Maio": { mesOrcado: 3400.00, mesRealizado: 11171.87, acumOrcado: 17000.00, acumRealizado: 25555.03 },
   },
   "32583103": {
     "Maio": { mesOrcado: 0.00, mesRealizado: 276.50, acumOrcado: 0.00, acumRealizado: 276.50 },
@@ -777,7 +777,7 @@ export const BALANCETE_MENSAL: Record<string, Partial<Record<MesDisponivel, MesD
     "Fevereiro": { mesOrcado: 214845.01, mesRealizado: 395974.38, acumOrcado: 429690.02, acumRealizado: 802223.43 },
     "Março": { mesOrcado: 214845.01, mesRealizado: 346463.41, acumOrcado: 644535.03, acumRealizado: 1148686.84 },
     "Abril": { mesOrcado: 214845.01, mesRealizado: 288463.38, acumOrcado: 859380.04, acumRealizado: 1437150.22 },
-    "Maio": { mesOrcado: 0.00, mesRealizado: 401.83, acumOrcado: 0.00, acumRealizado: 401.83 },
+    "Maio": { mesOrcado: 0.00, mesRealizado: 401.83, acumOrcado: 859380.04, acumRealizado: 1437552.05 },
   },
   "39602912": {
     "Janeiro": { mesOrcado: 250000.00, mesRealizado: 0.00, acumOrcado: 250000.00, acumRealizado: 0.00 },
