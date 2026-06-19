@@ -431,6 +431,20 @@ export default function MakeABudgetPage() {
     }
   }, [dept, selectedMeses, viewReceitas, nMeses])
 
+  // Recursive sum of totalProxAno for all leaf descendants (includes individual adjustments)
+  const calcTotalProxAno = useCallback((code: string): number => {
+    if (!dept) return 0
+    const kids = children[code] ?? []
+    if (kids.length === 0) {
+      // Leaf account
+      const { realPeriodo } = getPeriodData(dept, code, selectedMeses)
+      const proj = (realPeriodo / nMeses) * 12
+      const ajuste = getAjuste(selectedDept, code)
+      return proj + parseBR(ajuste.valor)
+    }
+    return kids.reduce((sum, k) => sum + calcTotalProxAno(k), 0)
+  }, [dept, children, selectedMeses, nMeses, selectedDept, getAjuste])
+
   // ── Row renderer ─────────────────────────────────────────────────────────────
   const renderRow = (code: string, depth: number): React.ReactNode => {
     if (!dept) return null
@@ -550,26 +564,32 @@ export default function MakeABudgetPage() {
           </div>
 
           {/* Total Próx. Ano — destaque */}
-          <div
-            className="text-right shrink-0 px-2"
-            style={{
-              width: 128,
-              background: hasAjuste ? "#F0FDF4" : totalProxAno ? "#F8FAFF" : "transparent",
-              borderLeft: `2px solid ${hasAjuste ? "#059669" : "#E2E8F0"}`,
-            }}
-          >
-            {!isTot && (totalProxAno !== 0 || hasAjuste) ? (
-              <span style={{
-                fontSize: 11,
-                fontWeight: hasAjuste ? 700 : 400,
-                color: hasAjuste ? "#059669" : "#374151",
-              }}>
-                {fmtBR(totalProxAno)}
-              </span>
-            ) : (
-              <span style={{ fontSize: 11, color: "#CBD5E1" }}>—</span>
-            )}
-          </div>
+          {(() => {
+            const displayTotal = isTot ? calcTotalProxAno(code) : totalProxAno
+            const showValue = displayTotal !== 0 || hasAjuste
+            return (
+              <div
+                className="text-right shrink-0 px-2"
+                style={{
+                  width: 128,
+                  background: hasAjuste ? "#F0FDF4" : showValue ? "#F8FAFF" : "transparent",
+                  borderLeft: `2px solid ${hasAjuste ? "#059669" : "#E2E8F0"}`,
+                }}
+              >
+                {showValue ? (
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: isTot ? 700 : hasAjuste ? 700 : 400,
+                    color: isTot ? "#1E3A8A" : hasAjuste ? "#059669" : "#374151",
+                  }}>
+                    {fmtBR(displayTotal)}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 11, color: "#CBD5E1" }}>—</span>
+                )}
+              </div>
+            )
+          })()}
         </div>
 
         {hasKids && isExpanded && kids.map(k => renderRow(k, depth + 1))}
