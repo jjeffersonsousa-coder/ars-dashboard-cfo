@@ -1077,16 +1077,16 @@ export default function ConfiguracoesPage() {
       {tab === "integracoes" && (
         <div className="space-y-4 max-w-lg">
           <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: "#E8F1F2", border: "1px solid #D4E8F0" }}>
-            <p className="font-semibold text-slate-700 mb-1">Base IA — Chave Claude API</p>
-            <p className="text-slate-600">A chave é armazenada apenas no seu navegador (localStorage) e usada para responder perguntas no menu Help / Base IA com respostas diretas via Claude.</p>
+            <p className="font-semibold text-slate-700 mb-1">Base IA — Chave Google Gemini (gratuito)</p>
+            <p className="text-slate-600">A chave é armazenada apenas no seu navegador (localStorage) e usada para responder perguntas no menu Help / Base IA com respostas diretas via Gemini 2.0 Flash.</p>
           </div>
           <div className="rounded-xl p-5 space-y-3" style={{ border: "1px solid #E2E8F0", background: "#F8FAFC" }}>
-            <label className="block text-sm font-medium text-slate-700">Chave de API Anthropic (Claude)</label>
+            <label className="block text-sm font-medium text-slate-700">Chave de API Google Gemini</label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Input
                   type={showClaudeKey ? "text" : "password"}
-                  placeholder="sk-ant-..."
+                  placeholder="AQ.Ab8RN..."
                   value={claudeKey}
                   onChange={e => { setClaudeKey(e.target.value); setClaudeKeySaved(false) }}
                   className="pr-10 font-mono text-sm"
@@ -1112,7 +1112,7 @@ export default function ConfiguracoesPage() {
             </div>
             {claudeKeySaved && (
               <p className="text-xs font-medium" style={{ color: "#16A34A" }}>
-                ✓ Chave salva com sucesso. O Help / Base IA já usará o Claude para responder.
+                ✓ Chave salva com sucesso. O Help / Base IA já usará o Gemini para responder.
               </p>
             )}
             {claudeKey && !claudeKeySaved && (

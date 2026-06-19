@@ -218,33 +218,23 @@ function MsgBubble({ msg, prevUserMsg }: { msg: Msg; prevUserMsg?: string }) {
 
 const CLAUDE_API_KEY = "ars_claude_api_key"
 
-async function askClaude(apiKey: string, question: string, context: string): Promise<string> {
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1024,
-      system: `Você é o assistente financeiro da ARS (Associação Rio Sul da IASD). Responda APENAS com base nos documentos fornecidos. Dê respostas diretas, objetivas e em português brasileiro. Se a informação não estiver nos documentos, diga claramente.`,
-      messages: [
-        {
-          role: "user",
-          content: `Documentos disponíveis:\n\n${context}\n\n---\nPergunta: ${question}`,
-        },
-      ],
-    }),
-  })
+async function askGemini(apiKey: string, question: string, context: string): Promise<string> {
+  const prompt = `Você é o assistente financeiro da ARS (Associação Rio Sul da IASD). Responda APENAS com base nos documentos fornecidos. Dê respostas diretas, objetivas e em português brasileiro. Se a informação não estiver nos documentos, diga claramente.\n\nDocumentos disponíveis:\n\n${context}\n\n---\nPergunta: ${question}`
+  const resp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    }
+  )
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}))
-    throw new Error((err as { error?: { message?: string } }).error?.message || `Erro ${resp.status}`)
+    const msg = (err as { error?: { message?: string } }).error?.message
+    throw new Error(msg || `Erro ${resp.status}`)
   }
-  const data = await resp.json() as { content: Array<{ text: string }> }
-  return data.content?.[0]?.text ?? "Sem resposta."
+  const data = await resp.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "Sem resposta."
 }
 
 export default function HelpPage() {
@@ -308,7 +298,7 @@ export default function HelpPage() {
       // Call Claude API with document context
       try {
         const context = activeDocs.map(d => `[${d.titulo}]\n${d.conteudo}`).join("\n\n---\n\n")
-        const answer = await askClaude(apiKey, question, context.slice(0, 80000))
+        const answer = await askGemini(apiKey, question, context.slice(0, 80000))
         assistantMsg = { role: "assistant", text: answer }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Erro desconhecido"
