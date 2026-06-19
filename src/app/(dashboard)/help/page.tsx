@@ -216,10 +216,42 @@ function MsgBubble({ msg, prevUserMsg }: { msg: Msg; prevUserMsg?: string }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
+const CLAUDE_API_KEY = "ars_claude_api_key"
+
+async function askClaude(apiKey: string, question: string, context: string): Promise<string> {
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 1024,
+      system: `Você é o assistente financeiro da ARS (Associação Rio Sul da IASD). Responda APENAS com base nos documentos fornecidos. Dê respostas diretas, objetivas e em português brasileiro. Se a informação não estiver nos documentos, diga claramente.`,
+      messages: [
+        {
+          role: "user",
+          content: `Documentos disponíveis:\n\n${context}\n\n---\nPergunta: ${question}`,
+        },
+      ],
+    }),
+  })
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}))
+    throw new Error((err as { error?: { message?: string } }).error?.message || `Erro ${resp.status}`)
+  }
+  const data = await resp.json() as { content: Array<{ text: string }> }
+  return data.content?.[0]?.text ?? "Sem resposta."
+}
+
 export default function HelpPage() {
   const [history, setHistory] = useState<Consulta[]>([])
   const [activaId, setActivaId] = useState<string | null>(null)
   const [extraDocs, setExtraDocs] = useState<BaseDoc[]>([])
+  const [apiKey, setApiKey] = useState("")
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
@@ -233,7 +265,11 @@ export default function HelpPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const msgEndRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { setHistory(loadHistory()) }, [])
+  useEffect(() => {
+    setHistory(loadHistory())
+    const k = localStorage.getItem(CLAUDE_API_KEY) ?? ""
+    setApiKey(k)
+  }, [])
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, loading])
 
   const allDocs: BaseDoc[] = [...BASE_CONHECIMENTO, ...extraDocs]
@@ -265,12 +301,21 @@ export default function HelpPage() {
     setMessages(newMsgs)
     setLoading(true)
 
-    await new Promise(r => setTimeout(r, 700))
-
     let assistantMsg: Msg
     if (activeDocs.length === 0) {
       assistantMsg = { role: "assistant", text: "Nenhum documento ativo. Ative documentos na base de conhecimento." }
+    } else if (apiKey) {
+      // Call Claude API with document context
+      try {
+        const context = activeDocs.map(d => `[${d.titulo}]\n${d.conteudo}`).join("\n\n---\n\n")
+        const answer = await askClaude(apiKey, question, context.slice(0, 80000))
+        assistantMsg = { role: "assistant", text: answer }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Erro desconhecido"
+        assistantMsg = { role: "assistant", text: `❌ Erro ao consultar Claude: ${msg}` }
+      }
     } else {
+      // Fallback: keyword search + excerpt
       const result = searchDocs(activeDocs, question)
       if (result) {
         assistantMsg = { role: "assistant", text: "", result }

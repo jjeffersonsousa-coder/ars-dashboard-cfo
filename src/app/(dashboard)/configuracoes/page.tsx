@@ -345,7 +345,7 @@ const AVATAR_COLORS = ["#006494", "#1ABC9C", "#9B59B6", "#E67E22", "#E74C3C", "#
 function avatarColor(id: number) { return AVATAR_COLORS[id % AVATAR_COLORS.length] }
 
 // ── Componente principal ────────────────────────────────────────────────────
-type Tab = "usuarios" | "acesso" | "departamentos" | "funcoes" | "permissoes" | "atribuicoes" | "marca"
+type Tab = "usuarios" | "acesso" | "departamentos" | "funcoes" | "permissoes" | "atribuicoes" | "marca" | "integracoes"
 
 export default function ConfiguracoesPage() {
   const [tab, setTab] = useState<Tab>("acesso")
@@ -355,6 +355,9 @@ export default function ConfiguracoesPage() {
   const [respMap, setRespMap] = useState<Record<string, string[]>>({})
   const [editingCode, setEditingCode] = useState<string | null>(null)
   const [newResp, setNewResp] = useState("")
+  const [claudeKey, setClaudeKey] = useState("")
+  const [claudeKeySaved, setClaudeKeySaved] = useState(false)
+  const [showClaudeKey, setShowClaudeKey] = useState(false)
   const [allResps, setAllResps] = useState<string[]>([])
   const [buscaDepto, setBuscaDepto] = useState("")
   const [logoBase64, setLogoBase64] = useState<string>("")
@@ -376,6 +379,7 @@ export default function ConfiguracoesPage() {
     setUsuarios(getAllUsuarios())
     const sess = getSession()
     setIsAdmin(sess?.nivel === 1)
+    setClaudeKey(localStorage.getItem("ars_claude_api_key") ?? "")
   }, [])
 
   function saveExtraUsers(list: UsuarioAuth[]) {
@@ -444,6 +448,7 @@ export default function ConfiguracoesPage() {
     { id: "permissoes", label: "Permissões", icon: Lock },
     { id: "atribuicoes", label: "Atribuições", icon: UserCog },
     { id: "marca", label: "Marca / Logo", icon: ImageIcon },
+    { id: "integracoes", label: "Integrações / IA", icon: KeyRound },
   ]
 
   function toggleResp(code: string, resp: string) {
@@ -534,7 +539,7 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* Busca */}
-      {tab !== "funcoes" && tab !== "permissoes" && tab !== "atribuicoes" && tab !== "marca" && tab !== "acesso" && (
+      {tab !== "funcoes" && tab !== "permissoes" && tab !== "atribuicoes" && tab !== "marca" && tab !== "acesso" && tab !== "integracoes" && (
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
@@ -1065,6 +1070,58 @@ export default function ConfiguracoesPage() {
               <p className="text-xs mt-2" style={{ color: "#64748B" }}>A logo é armazenada localmente no navegador.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Tab: Integrações / IA ─────────────────────────────────────────── */}
+      {tab === "integracoes" && (
+        <div className="space-y-4 max-w-lg">
+          <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: "#E8F1F2", border: "1px solid #D4E8F0" }}>
+            <p className="font-semibold text-slate-700 mb-1">Base IA — Chave Claude API</p>
+            <p className="text-slate-600">A chave é armazenada apenas no seu navegador (localStorage) e usada para responder perguntas no menu Help / Base IA com respostas diretas via Claude.</p>
+          </div>
+          <div className="rounded-xl p-5 space-y-3" style={{ border: "1px solid #E2E8F0", background: "#F8FAFC" }}>
+            <label className="block text-sm font-medium text-slate-700">Chave de API Anthropic (Claude)</label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  type={showClaudeKey ? "text" : "password"}
+                  placeholder="sk-ant-..."
+                  value={claudeKey}
+                  onChange={e => { setClaudeKey(e.target.value); setClaudeKeySaved(false) }}
+                  className="pr-10 font-mono text-sm"
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  onClick={() => setShowClaudeKey(v => !v)}
+                >
+                  {showClaudeKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <Button
+                onClick={() => {
+                  if (claudeKey.trim()) localStorage.setItem("ars_claude_api_key", claudeKey.trim())
+                  else localStorage.removeItem("ars_claude_api_key")
+                  setClaudeKeySaved(true)
+                }}
+                style={{ backgroundColor: "#006494" }}
+              >
+                Salvar
+              </Button>
+            </div>
+            {claudeKeySaved && (
+              <p className="text-xs font-medium" style={{ color: "#16A34A" }}>
+                ✓ Chave salva com sucesso. O Help / Base IA já usará o Claude para responder.
+              </p>
+            )}
+            {claudeKey && !claudeKeySaved && (
+              <p className="text-xs text-slate-400">Clique em Salvar para confirmar a alteração.</p>
+            )}
+            {!claudeKey && (
+              <p className="text-xs text-slate-400">Sem chave configurada — Help usará busca por palavra-chave nos documentos.</p>
+            )}
+          </div>
         </div>
       )}
 

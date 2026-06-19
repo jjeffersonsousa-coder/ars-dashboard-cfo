@@ -460,13 +460,14 @@ export default function MakeABudgetPage() {
     const conta = dept.contas[code] ?? (customAcc ? { nome: customAcc.nome, isTot: false, orcadoAnual: 0, d: {} } : null)
     if (!conta) return null
     if (search && !code.includes(search) && !conta.nome.toLowerCase().includes(search.toLowerCase())) {
-      // Check if any child matches
-      const kids = children[code] ?? []
-      const anyKidMatches = kids.some(k => {
-        const kc = dept.contas[k]
-        return kc && (k.includes(search) || kc.nome.toLowerCase().includes(search.toLowerCase()))
-      })
-      if (!anyKidMatches) return null
+      // Recursively check if any descendant matches
+      const anyDescMatches = (c: string): boolean => {
+        const kc = dept!.contas[c]
+        if (!kc) return false
+        if (c.includes(search) || kc.nome.toLowerCase().includes(search.toLowerCase())) return true
+        return (children[c] ?? []).some(anyDescMatches)
+      }
+      if (!(children[code] ?? []).some(anyDescMatches)) return null
     }
 
     const kids = children[code] ?? []
