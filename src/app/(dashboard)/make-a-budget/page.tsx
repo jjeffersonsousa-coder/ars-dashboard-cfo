@@ -473,6 +473,9 @@ export default function MakeABudgetPage() {
     const hasKids = kids.length > 0
     const isExpanded = expanded.has(code)
     const isTot = conta.isTot || hasKids
+    const subEntries = !hasKids && conta.sub ? Object.entries(conta.sub) : []
+    const hasSubs = subEntries.length > 0
+    const isExpandable = hasKids || hasSubs
 
     const { orcPeriodo, realPeriodo } = getPeriodData(dept, code, selectedMeses)
     const projecao = (realPeriodo / nMeses) * 12
@@ -504,12 +507,12 @@ export default function MakeABudgetPage() {
           <div
             className="flex items-center gap-1 shrink-0"
             style={{ width: 400, paddingLeft: 10 + indent, paddingRight: 6 }}
-            onClick={e => { e.stopPropagation(); if (hasKids) { toggleExpand(code); setSelectedRow(code) } else setSelectedRow(isRowSelected ? null : code) }}
+            onClick={e => { e.stopPropagation(); if (isExpandable) { toggleExpand(code); setSelectedRow(code) } else setSelectedRow(isRowSelected ? null : code) }}
           >
             <span className="w-4 shrink-0 flex items-center justify-center">
-              {hasKids
+              {isExpandable
                 ? isExpanded
-                  ? <ChevronDown className="w-3 h-3" style={{ color: "#006494" }} />
+                  ? <ChevronDown className="w-3 h-3" style={{ color: hasSubs && !hasKids ? "#7C3AED" : "#006494" }} />
                   : <ChevronRight className="w-3 h-3" style={{ color: "#94A3B8" }} />
                 : <span className="w-3" />}
             </span>
@@ -600,6 +603,31 @@ export default function MakeABudgetPage() {
         </div>
 
         {hasKids && isExpanded && kids.map(k => renderRow(k, depth + 1))}
+        {hasSubs && isExpanded && subEntries.map(([subCode, subInfo]) => {
+          const valid = selectedMeses.map(m => MES_TO_KEY[m]).filter(Boolean) as MesKey[]
+          const sorted = [...valid].sort((a,b) => MESES_KEYS.indexOf(a) - MESES_KEYS.indexOf(b))
+          const last = sorted[sorted.length - 1]
+          const subD = last ? subInfo.d[last] : undefined
+          const subOrc = sorted.length === 1 ? (subD?.[0] ?? 0) : (subD?.[2] ?? 0)
+          const subReal = sorted.length === 1 ? (subD?.[1] ?? 0) : (subD?.[3] ?? 0)
+          const subIndent = (depth + 1) * 18
+          return (
+            <div key={subCode} className="flex items-center border-b" style={{ background: "#F5F3FF", minHeight: 26, borderColor: "#EDE9FE" }}>
+              <div className="flex items-center gap-1 shrink-0" style={{ width: 400, paddingLeft: 10 + subIndent, paddingRight: 6 }}>
+                <span className="w-4 shrink-0" />
+                <span className="font-mono shrink-0 mr-1.5 text-right" style={{ fontSize: 9, color: "#A78BFA", minWidth: 68 }}>{subCode}</span>
+                <span className="truncate" style={{ fontSize: 10, color: "#6D28D9" }}>{subInfo.nome}</span>
+              </div>
+              <Cell isTot={false}>{subOrc ? fmtBR(subOrc) : "—"}</Cell>
+              <Cell isTot={false} color="#6D28D9">{subReal ? fmtBR(subReal) : "—"}</Cell>
+              <Cell isTot={false}>{"—"}</Cell>
+              <div className="text-right shrink-0 flex items-center justify-end pr-2" style={{ width: 130 }}><span style={{ fontSize: 10, color: "#CBD5E1" }}>—</span></div>
+              <div className="shrink-0 px-1" style={{ width: 88 }}><span className="block text-right" style={{ fontSize: 10, color: "#CBD5E1" }}>—</span></div>
+              <div className="shrink-0 px-1" style={{ width: 110 }}><span className="block text-right" style={{ fontSize: 10, color: "#CBD5E1" }}>—</span></div>
+              <div className="text-right shrink-0 px-2" style={{ width: 128, borderLeft: "2px solid #EDE9FE" }}><span style={{ fontSize: 10, color: "#CBD5E1" }}>—</span></div>
+            </div>
+          )
+        })}
       </div>
     )
   }
