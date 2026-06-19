@@ -403,11 +403,18 @@ export default function MakeABudgetPage() {
   const children: Record<string, string[]> = {}
   const roots: string[] = []
 
+  // meaningful prefix = code with trailing zeros stripped (e.g. "4190000" → "419")
+  const meaningful: Record<string, string> = {}
+  for (const c of deptCodes) meaningful[c] = c.replace(/0+$/, "") || c[0]
+
   for (const code of deptCodes) {
+    const m = meaningful[code]
     let parent: string | null = null
-    for (let len = code.length - 1; len >= 4; len--) {
-      const c = code.slice(0, len)
-      if (codeSet.has(c)) { parent = c; break }
+    let bestLen = 0
+    for (const cand of deptCodes) {
+      if (cand === code) continue
+      const cm = meaningful[cand]
+      if (m.startsWith(cm) && cm.length > bestLen) { parent = cand; bestLen = cm.length }
     }
     parentOf[code] = parent
     if (parent) { if (!children[parent]) children[parent] = []; children[parent].push(code) }
