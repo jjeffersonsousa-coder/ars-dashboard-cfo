@@ -861,9 +861,10 @@ export default function MakeABudgetPage() {
         {/* ── Tab content ── */}
         {tab === "edicao" ? (
           dept ? (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Table header */}
-              <div className="shrink-0 flex items-center" style={{ background: "#1E3A8A", minWidth: 1180 }}>
+            <div className="flex-1 overflow-auto">
+              <div style={{ minWidth: 1180 }}>
+              {/* Table header — sticky top so it stays visible on vertical scroll */}
+              <div className="flex items-center sticky top-0 z-10" style={{ background: "#1E3A8A" }}>
                 <div className="shrink-0 px-3 py-2 text-xs font-semibold" style={{ width: 400, color: "#E0F2FE" }}>Conta · Descrição</div>
                 {[
                   { label: `Orç. ${mesLabel}`, w: 100 },
@@ -878,8 +879,7 @@ export default function MakeABudgetPage() {
                 ))}
               </div>
               {/* Table body */}
-              <div className="flex-1 overflow-auto">
-                <div style={{ minWidth: 1180 }}>
+              <div>
                   {filteredRoots.map(code => renderRow(code, 0))}
                 </div>
               </div>
