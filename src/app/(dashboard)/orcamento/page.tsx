@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Upload, TrendingUp, TrendingDown, Minus, X, ChevronDown,
-  Search, FileText, CheckCircle2, AlertCircle, Loader2,
+  Search, FileText, CheckCircle2, AlertCircle, Loader2, Printer,
 } from "lucide-react"
 import { ORCAMENTO_2026, MES_REFERENCIA, ANO_REFERENCIA, type DeptOrcamento } from "@/data/orcamento-2026"
 import { DEPT_RESPONSAVEIS } from "@/data/responsaveis"
@@ -331,10 +331,50 @@ export default function OrcamentoPage() {
     if (fileInputRef.current) fileInputRef.current.value = ""
   }, [])
 
+  const mesLabel2 = sortedMeses.length === 0 ? "Ano todo"
+    : sortedMeses.length === 1 ? sortedMeses[0]
+    : `${sortedMeses[0]}–${sortedMeses[sortedMeses.length - 1]}`
+
+  const filterDesc = [
+    selectedDeptos.length > 0 ? `Depto: ${selectedDeptos.join(", ")}` : null,
+    selectedResps.length > 0 ? `Resp: ${selectedResps.join(", ")}` : null,
+    selectedFundos.length > 0 ? `Fundo: ${selectedFundos.join(", ")}` : null,
+    busca ? `Busca: "${busca}"` : null,
+  ].filter(Boolean).join(" · ")
+
+  function handlePrint() {
+    window.print()
+  }
+
   return (
-    <div className="space-y-6">
+    <>
+      <style>{`
+        @media print {
+          @page { size: A4 landscape; margin: 12mm 10mm; }
+          body * { visibility: hidden; }
+          #orcamento-print, #orcamento-print * { visibility: visible; }
+          #orcamento-print { position: absolute; inset: 0; padding: 0; }
+          .no-print { display: none !important; }
+          .print-table-scroll { max-height: none !important; overflow: visible !important; }
+          table { page-break-inside: auto; }
+          tr { page-break-inside: avoid; }
+          thead { display: table-header-group; }
+          .card-hover-glow { box-shadow: none !important; }
+        }
+      `}</style>
+    <div id="orcamento-print" className="space-y-6">
+      {/* Print header (only visible when printing) */}
+      <div className="hidden print:flex items-center justify-between pb-2 border-b-2" style={{ borderColor: "#006494" }}>
+        <div>
+          <p className="text-lg font-bold" style={{ color: "#006494" }}>Associação Rio Sul da IASD</p>
+          <p className="text-sm text-slate-500">Acompanhamento Orçamentário {ANO_REFERENCIA} — {mesLabel2}</p>
+          {filterDesc && <p className="text-xs text-slate-400 mt-0.5">{filterDesc}</p>}
+        </div>
+        <p className="text-xs text-slate-400">Gerado em {new Date().toLocaleDateString("pt-BR")}</p>
+      </div>
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between no-print">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Acompanhamento Orçamentário</h2>
           <p className="text-slate-500 mt-1 flex items-center gap-2">
@@ -344,20 +384,26 @@ export default function OrcamentoPage() {
             </span>
           </p>
         </div>
-        {isSuperAdmin && (
-          <div className="flex flex-col items-end gap-1">
-            <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
-            <Button className="gap-2" style={{ backgroundColor: "#006494" }}
-              onClick={() => fileInputRef.current?.click()} disabled={importStatus === "loading"}>
-              {importStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              Importar Balancete
-            </Button>
-            <button onClick={() => setShowImportHint(!showImportHint)}
-              className="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2">
-              Como importar?
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2 no-print" onClick={handlePrint}>
+            <Printer className="w-4 h-4" />
+            Exportar PDF
+          </Button>
+          {isSuperAdmin && (
+            <div className="flex flex-col items-end gap-1">
+              <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
+              <Button className="gap-2" style={{ backgroundColor: "#006494" }}
+                onClick={() => fileInputRef.current?.click()} disabled={importStatus === "loading"}>
+                {importStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                Importar Balancete
+              </Button>
+              <button onClick={() => setShowImportHint(!showImportHint)}
+                className="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2">
+                Como importar?
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Import hint */}
@@ -543,7 +589,7 @@ export default function OrcamentoPage() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <div className="max-h-[520px] overflow-y-auto">
+            <div className="max-h-[520px] overflow-y-auto print-table-scroll">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-white z-10 border-b">
                   <tr>
@@ -624,5 +670,6 @@ export default function OrcamentoPage() {
       </Card>
 
     </div>
+    </>
   )
 }
