@@ -672,6 +672,7 @@ export default function MakeABudgetPage() {
                 setNotas(next)
                 localStorage.setItem("ars_mab3_notas", JSON.stringify(next))
               }}
+              onBlur={() => setSelectedRow(null)}
               className="flex-1 text-xs rounded border px-2 py-1 outline-none resize-none"
               style={{ borderColor: "#C4B5FD", color: "#374151" }}
             />
