@@ -1220,6 +1220,7 @@ function ResumoFundos({ ajustes, selectedMeses, nMeses }: {
       { label: "A313 DOAÇÕES", code: "3130000", sub: true },
       { label: "A318A RECEITAS FINANCEIRAS", code: "3181000", sub: true },
       { label: "A318B OUTRAS RECEITAS", code: "3182000", sub: true },
+      { label: "A319 SUBVENÇÕES RECEBIDAS", code: "3190000", sub: true },
     ]},
     { key: "despesas", label: "TOTAL DAS DESPESAS", code: "4000000", items: [
       { label: "A411 DESPESAS COM PESSOAL", code: "4110000", sub: true },
