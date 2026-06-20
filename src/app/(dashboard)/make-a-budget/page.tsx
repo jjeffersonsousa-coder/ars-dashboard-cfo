@@ -1396,8 +1396,10 @@ function NotasView({ notas, onDelete }: {
         const parentCode = subMatch[1]
         const subCode = subMatch[2]
         const parentNome = d?.contas[parentCode]?.nome ?? parentCode
-        const subNome = d?.contas[parentCode]?.sub?.[subCode]?.nome ?? subCode
-        entries.push({ dCode, dNome, aCode, aNome: parentNome, nota, isSub: true, subLabel: `${subCode} — ${subNome}` })
+        const subNome = d?.contas[parentCode]?.sub?.[subCode]?.nome ?? ""
+        const numericPart = subCode.match(/^(\d+)/)?.[1] ?? subCode
+        const subLabel = subNome ? `${numericPart} - ${subNome}` : numericPart
+        entries.push({ dCode, dNome, aCode, aNome: parentNome, nota, isSub: true, subLabel })
       } else {
         const aNome = d?.contas[aCode]?.nome ?? aCode
         entries.push({ dCode, dNome, aCode, aNome, nota, isSub: false, subLabel: "" })
