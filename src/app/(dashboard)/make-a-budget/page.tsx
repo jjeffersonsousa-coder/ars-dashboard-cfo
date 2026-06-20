@@ -110,8 +110,21 @@ function computeGroupTotal(
   ajustes: Record<string, Record<string, AjusteData>>
 ): number {
   const deptAjustes = ajustes[dCode] ?? {}
-  const hasAnyAjuste = Object.keys(deptAjustes).length > 0
-  if (!hasAnyAjuste) return d.contas[groupPrefix]?.orcadoAnual ?? 0
+  const valid = selectedMeses.map(m => MES_TO_KEY[m]).filter(Boolean) as MesKey[]
+  const sorted = [...valid].sort((a, b) => MESES_KEYS.indexOf(a) - MESES_KEYS.indexOf(b))
+  const last = sorted[sorted.length - 1]
+
+  function leafTotal(lCode: string): number {
+    const cv = d.contas[lCode]
+    if (!cv) return 0
+    // Always use real-based projection as base — same formula as Edição tab
+    const real = sorted.length === 0 ? 0
+      : sorted.length === 1 ? (cv.d[sorted[0]]?.[1] ?? 0)
+      : (cv.d[last]?.[3] ?? 0)
+    const proj = (real / nMeses) * 12
+    const ajuste = deptAjustes[lCode]
+    return proj + (ajuste?.valor ? parseBR(ajuste.valor) : 0)
+  }
 
   const allCodes = Object.keys(d.contas)
   const groupAccounts = allCodes.filter(c => c === groupPrefix || c.startsWith(groupPrefix))
@@ -119,20 +132,6 @@ function computeGroupTotal(
     if (c === groupPrefix) return false
     return !groupAccounts.some(o => o !== c && o.startsWith(c))
   })
-
-  function leafTotal(lCode: string): number {
-    const cv = d.contas[lCode]
-    if (!cv) return 0
-    const ajuste = deptAjustes[lCode]
-    if (ajuste?.valor) {
-      const valid = selectedMeses.map(m => MES_TO_KEY[m]).filter(Boolean) as MesKey[]
-      const sorted = [...valid].sort((a,b) => MESES_KEYS.indexOf(a) - MESES_KEYS.indexOf(b))
-      const last = sorted[sorted.length-1]
-      const real = sorted.length === 1 ? (cv.d[sorted[0]]?.[1] ?? 0) : (cv.d[last]?.[3] ?? 0)
-      return (real / nMeses) * 12 + parseBR(ajuste.valor)
-    }
-    return cv.orcadoAnual
-  }
 
   if (leaves.length === 0) return leafTotal(groupPrefix)
   return leaves.reduce((s, lc) => s + leafTotal(lc), 0)
