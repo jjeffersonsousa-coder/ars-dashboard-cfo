@@ -1229,13 +1229,13 @@ function ResumoFundos({ ajustes, selectedMeses, nMeses }: {
                 {fundos.map(f => {
                   const rec = getGroupValue("3000000", f)
                   const desp = getGroupValue("4000000", f)
-                  const res = rec - desp
+                  const res = rec + desp
                   return <td key={f} className="text-right px-3 py-2 font-bold" style={{ color: res >= 0 ? "#059669" : "#DC2626" }}>{fmtBR(res)}</td>
                 })}
                 {(() => {
                   const rec = getGroupValue("3000000", null)
                   const desp = getGroupValue("4000000", null)
-                  const res = rec - desp
+                  const res = rec + desp
                   return <>
                     <td className="text-right px-3 py-2 font-bold" style={{ color: res >= 0 ? "#059669" : "#DC2626" }}>{fmtBR(res)}</td>
                     <td className="text-right px-4 py-2 font-bold" style={{ color: res >= 0 ? "#059669" : "#DC2626" }}>{fmtBR(res/12)}</td>
