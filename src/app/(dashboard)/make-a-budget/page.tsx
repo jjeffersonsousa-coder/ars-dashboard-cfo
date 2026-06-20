@@ -687,20 +687,51 @@ export default function MakeABudgetPage() {
           const subOrc = sorted.length === 1 ? (subD?.[0] ?? 0) : (subD?.[2] ?? 0)
           const subReal = sorted.length === 1 ? (subD?.[1] ?? 0) : (subD?.[3] ?? 0)
           const subIndent = (depth + 1) * 18
+          const subNoteKey = `${code}__sub__${subCode}`
+          const subNota = notas[selectedDept]?.[subNoteKey] ?? ""
+          const isSubSelected = selectedRow === subNoteKey
           return (
-            <div key={subCode} className="flex items-center border-b" style={{ background: "#F5F3FF", minHeight: 26, borderColor: "#EDE9FE" }}>
-              <div className="flex items-center gap-1 shrink-0" style={{ width: 400, paddingLeft: 10 + subIndent, paddingRight: 6 }}>
-                <span className="w-4 shrink-0" />
-                <span className="font-mono shrink-0 mr-1.5 text-right" style={{ fontSize: 9, color: "#A78BFA", minWidth: 68 }}>{subCode}</span>
-                <span className="truncate" style={{ fontSize: 10, color: "#6D28D9" }}>{subInfo.nome}</span>
+            <div key={subCode}>
+              <div className="flex items-center border-b" style={{ background: isSubSelected ? "#DBEAFE" : "#F5F3FF", minHeight: 26, borderColor: "#EDE9FE" }}>
+                <div className="flex items-center gap-1 shrink-0" style={{ width: 400, paddingLeft: 10 + subIndent, paddingRight: 6 }}>
+                  <span className="w-4 shrink-0" />
+                  <span className="font-mono shrink-0 mr-1.5 text-right" style={{ fontSize: 9, color: "#A78BFA", minWidth: 68 }}>{subCode}</span>
+                  <span className="truncate" style={{ fontSize: 10, color: "#6D28D9" }}>{subInfo.nome}</span>
+                </div>
+                <Cell isTot={false}>{subOrc ? fmtBR(subOrc) : "—"}</Cell>
+                <Cell isTot={false} color="#6D28D9">{subReal ? fmtBR(subReal) : "—"}</Cell>
+                <Cell isTot={false}>{"—"}</Cell>
+                <div className="text-right shrink-0 flex items-center justify-end pr-2" style={{ width: 130 }}><span style={{ fontSize: 10, color: "#CBD5E1" }}>—</span></div>
+                <div className="shrink-0 px-1" style={{ width: 88 }}><span className="block text-right" style={{ fontSize: 10, color: "#CBD5E1" }}>—</span></div>
+                <div className="shrink-0 px-1" style={{ width: 110 }}><span className="block text-right" style={{ fontSize: 10, color: "#CBD5E1" }}>—</span></div>
+                <div className="text-right shrink-0 px-2" style={{ width: 128, borderLeft: "2px solid #EDE9FE" }}><span style={{ fontSize: 10, color: "#CBD5E1" }}>—</span></div>
+                <button
+                  className="shrink-0 ml-1 flex items-center justify-center rounded"
+                  style={{ width: 22, height: 22, color: subNota ? "#7C3AED" : "#CBD5E1" }}
+                  title={subNota ? "Ver/editar nota" : "Adicionar nota"}
+                  onClick={e => { e.stopPropagation(); setSelectedRow(isSubSelected ? null : subNoteKey) }}
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <Cell isTot={false}>{subOrc ? fmtBR(subOrc) : "—"}</Cell>
-              <Cell isTot={false} color="#6D28D9">{subReal ? fmtBR(subReal) : "—"}</Cell>
-              <Cell isTot={false}>{"—"}</Cell>
-              <div className="text-right shrink-0 flex items-center justify-end pr-2" style={{ width: 130 }}><span style={{ fontSize: 10, color: "#CBD5E1" }}>—</span></div>
-              <div className="shrink-0 px-1" style={{ width: 88 }}><span className="block text-right" style={{ fontSize: 10, color: "#CBD5E1" }}>—</span></div>
-              <div className="shrink-0 px-1" style={{ width: 110 }}><span className="block text-right" style={{ fontSize: 10, color: "#CBD5E1" }}>—</span></div>
-              <div className="text-right shrink-0 px-2" style={{ width: 128, borderLeft: "2px solid #EDE9FE" }}><span style={{ fontSize: 10, color: "#CBD5E1" }}>—</span></div>
+              {isSubSelected && (
+                <div className="flex items-start gap-2 px-4 py-2 border-b" style={{ background: "#FAF5FF", borderColor: "#EDE9FE" }}>
+                  <MessageSquare className="w-3.5 h-3.5 mt-1 shrink-0" style={{ color: "#7C3AED" }} />
+                  <textarea
+                    autoFocus
+                    rows={2}
+                    placeholder="Digite sua anotação sobre esta sub-conta..."
+                    value={subNota}
+                    onChange={e => {
+                      const next = { ...notas, [selectedDept]: { ...(notas[selectedDept] ?? {}), [subNoteKey]: e.target.value } }
+                      setNotas(next)
+                      localStorage.setItem("ars_mab3_notas", JSON.stringify(next))
+                    }}
+                    className="flex-1 text-xs rounded border px-2 py-1 outline-none resize-none"
+                    style={{ borderColor: "#C4B5FD", color: "#374151" }}
+                  />
+                </div>
+              )}
             </div>
           )
         })}
