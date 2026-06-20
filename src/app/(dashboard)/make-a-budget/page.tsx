@@ -7,11 +7,14 @@ import {
   ChevronRight, ChevronDown, Download, Search, X,
   CheckCircle2, TrendingUp, TrendingDown, Minus,
   BarChart3, FileText, List, PanelLeftClose, PanelLeftOpen,
-  Circle,
+  Circle, MessageSquare, CalendarDays, Plus, Trash2,
 } from "lucide-react"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type Tab = "edicao" | "resumo-fundos" | "resumo-operacional"
+type Tab = "edicao" | "resumo-fundos" | "resumo-operacional" | "notas" | "subvencoes"
+type SubvencaoEntry = {
+  id: string; tipo: "receber" | "enviar"; deptCode: string; contaCode: string; valor: string; descricao: string
+}
 type AjusteData = { pct: string; valor: string }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -166,6 +169,8 @@ export default function MakeABudgetPage() {
   const [newAccParent, setNewAccParent] = useState("")
   const [customAccounts, setCustomAccounts] = useState<Record<string, Array<{code: string; nome: string}>>>({})
   const STORAGE_CUSTOM = "ars_mab3_custom"
+  const [notas, setNotas] = useState<Record<string, Record<string, string>>>({})
+  const [subvencoes, setSubvencoes] = useState<SubvencaoEntry[]>([])
 
   useEffect(() => {
     try {
@@ -179,6 +184,10 @@ export default function MakeABudgetPage() {
       if (s) setDeptStatuses(JSON.parse(s))
       const c = localStorage.getItem("ars_mab3_custom")
       if (c) setCustomAccounts(JSON.parse(c))
+      const n = localStorage.getItem("ars_mab3_notas")
+      if (n) setNotas(JSON.parse(n))
+      const sv = localStorage.getItem("ars_mab3_subvencoes")
+      if (sv) setSubvencoes(JSON.parse(sv))
     } catch { /* ignore */ }
   }, [])
 
@@ -273,36 +282,60 @@ export default function MakeABudgetPage() {
     ajustes[dCode]?.[aCode] ?? { pct: "", valor: "" }
 
   const handlePct = (dCode: string, aCode: string, pct: string) => {
+    const pctNum = parseBR(pct.replace(",", "."))
+    if (dCode === TOTAL_DEPT_CODE) {
+      // Apply same % to every dept that has this account
+      let next = { ...ajustes }
+      for (const [dc, d] of Object.entries(BALANCETE_DEPT)) {
+        if (!d.contas[aCode]) continue
+        const { realPeriodo } = getPeriodData(d, aCode, selectedMeses)
+        const proj = (realPeriodo / nMeses) * 12
+        let valor = ""
+        if (!isNaN(pctNum) && proj !== 0) {
+          const v = proj * pctNum / 100
+          valor = applyMask(String(Math.round(Math.abs(v) * 100)))
+          if (v < 0) valor = "-" + valor
+        }
+        next = { ...next, [dc]: { ...(next[dc] ?? {}), [aCode]: { pct, valor } } }
+      }
+      saveAjustes(next); return
+    }
     const d = BALANCETE_DEPT[dCode]
     if (!d) return
     const { realPeriodo } = getPeriodData(d, aCode, selectedMeses)
     const proj = (realPeriodo / nMeses) * 12
     let valor = ""
-    const pctNum = parseBR(pct.replace(",","."))
     if (!isNaN(pctNum) && proj !== 0) {
       const v = proj * pctNum / 100
       valor = applyMask(String(Math.round(Math.abs(v) * 100)))
       if (v < 0) valor = "-" + valor
     }
-    const next = { ...ajustes, [dCode]: { ...(ajustes[dCode] ?? {}), [aCode]: { pct, valor } } }
-    saveAjustes(next)
+    saveAjustes({ ...ajustes, [dCode]: { ...(ajustes[dCode] ?? {}), [aCode]: { pct, valor } } })
   }
 
   const handleValor = (dCode: string, aCode: string, rawInput: string) => {
     const isNeg = rawInput.startsWith("-")
-    const digits = rawInput.replace(/\D/g,"")
+    const digits = rawInput.replace(/\D/g, "")
     const valor = (isNeg ? "-" : "") + (digits ? applyMask(digits) : "")
+    if (dCode === TOTAL_DEPT_CODE) {
+      let next = { ...ajustes }
+      for (const [dc, d] of Object.entries(BALANCETE_DEPT)) {
+        if (!d.contas[aCode]) continue
+        const { realPeriodo } = getPeriodData(d, aCode, selectedMeses)
+        const proj = (realPeriodo / nMeses) * 12
+        const valorNum = parseBR(valor)
+        const pct = !isNaN(valorNum) && proj !== 0 ? (valorNum / proj * 100).toFixed(2).replace(".", ",") : ""
+        next = { ...next, [dc]: { ...(next[dc] ?? {}), [aCode]: { pct, valor } } }
+      }
+      saveAjustes(next); return
+    }
     const d = BALANCETE_DEPT[dCode]
     if (!d) return
     const { realPeriodo } = getPeriodData(d, aCode, selectedMeses)
     const proj = (realPeriodo / nMeses) * 12
-    let pct = ""
     const valorNum = parseBR(valor)
-    if (!isNaN(valorNum) && proj !== 0) {
-      pct = (valorNum / proj * 100).toFixed(2).replace(".",",")
-    }
-    const next = { ...ajustes, [dCode]: { ...(ajustes[dCode] ?? {}), [aCode]: { pct, valor } } }
-    saveAjustes(next)
+    const pct = !isNaN(valorNum) && proj !== 0 ? (valorNum / proj * 100).toFixed(2).replace(".", ",") : ""
+    saveAjustes({ ...ajustes, [dCode]: { ...(ajustes[dCode] ?? {}), [aCode]: { pct, valor } } })
   }
 
   // Apply global % to all leaf accounts in current dept
@@ -441,12 +474,22 @@ export default function MakeABudgetPage() {
   const calcTotalProxAno = useCallback((code: string): number => {
     if (!dept) return 0
     const kids = children[code] ?? []
+    if (selectedDept === TOTAL_DEPT_CODE) {
+      // In consolidated mode: sum across all real depts
+      if (kids.length > 0) return kids.reduce((sum, k) => sum + calcTotalProxAno(k), 0)
+      let total = 0
+      for (const [dc, d] of Object.entries(BALANCETE_DEPT)) {
+        if (!d.contas[code]) continue
+        const { realPeriodo } = getPeriodData(d, code, selectedMeses)
+        const proj = (realPeriodo / nMeses) * 12
+        total += proj + parseBR(getAjuste(dc, code).valor)
+      }
+      return total
+    }
     if (kids.length === 0) {
-      // Leaf account
       const { realPeriodo } = getPeriodData(dept, code, selectedMeses)
       const proj = (realPeriodo / nMeses) * 12
-      const ajuste = getAjuste(selectedDept, code)
-      return proj + parseBR(ajuste.valor)
+      return proj + parseBR(getAjuste(selectedDept, code).valor)
     }
     return kids.reduce((sum, k) => sum + calcTotalProxAno(k), 0)
   }, [dept, children, selectedMeses, nMeses, selectedDept, getAjuste])
@@ -600,7 +643,42 @@ export default function MakeABudgetPage() {
               </div>
             )
           })()}
+
+          {/* Nota button */}
+          {!isTot && (() => {
+            const nota = notas[selectedDept]?.[code] ?? ""
+            return (
+              <button
+                className="shrink-0 ml-1 flex items-center justify-center rounded"
+                style={{ width: 22, height: 22, color: nota ? "#7C3AED" : "#CBD5E1" }}
+                title={nota ? "Ver/editar nota" : "Adicionar nota"}
+                onClick={e => { e.stopPropagation(); setSelectedRow(isRowSelected ? null : code) }}
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+              </button>
+            )
+          })()}
         </div>
+
+        {/* Inline note editor */}
+        {!isTot && isRowSelected && (
+          <div className="flex items-start gap-2 px-4 py-2 border-b" style={{ background: "#FAF5FF", borderColor: "#EDE9FE" }}>
+            <MessageSquare className="w-3.5 h-3.5 mt-1 shrink-0" style={{ color: "#7C3AED" }} />
+            <textarea
+              autoFocus
+              rows={2}
+              placeholder="Digite sua anotação sobre esta conta..."
+              value={notas[selectedDept]?.[code] ?? ""}
+              onChange={e => {
+                const next = { ...notas, [selectedDept]: { ...(notas[selectedDept] ?? {}), [code]: e.target.value } }
+                setNotas(next)
+                localStorage.setItem("ars_mab3_notas", JSON.stringify(next))
+              }}
+              className="flex-1 text-xs rounded border px-2 py-1 outline-none resize-none"
+              style={{ borderColor: "#C4B5FD", color: "#374151" }}
+            />
+          </div>
+        )}
 
         {hasKids && isExpanded && kids.map(k => renderRow(k, depth + 1))}
         {hasSubs && isExpanded && subEntries.map(([subCode, subInfo]) => {
@@ -751,6 +829,8 @@ export default function MakeABudgetPage() {
               { key: "edicao", icon: List, label: "Edição" },
               { key: "resumo-fundos", icon: BarChart3, label: "Por Fundos" },
               { key: "resumo-operacional", icon: FileText, label: "Operacional" },
+              { key: "notas", icon: MessageSquare, label: "Notas" },
+              { key: "subvencoes", icon: CalendarDays, label: "Subvenções" },
             ] as const).map(t => (
               <button key={t.key} onClick={() => setTab(t.key)}
                 className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium"
@@ -921,9 +1001,45 @@ export default function MakeABudgetPage() {
           <div id="resumo-print-area" className="flex-1 overflow-auto">
             <ResumoFundos ajustes={ajustes} selectedMeses={selectedMeses} nMeses={nMeses} />
           </div>
-        ) : (
+        ) : tab === "resumo-operacional" ? (
           <div id="resumo-print-area" className="flex-1 overflow-auto">
             <ResumoOperacional ajustes={ajustes} selectedMeses={selectedMeses} nMeses={nMeses} />
+          </div>
+        ) : tab === "notas" ? (
+          <div className="flex-1 overflow-auto p-5">
+            <NotasView notas={notas} onDelete={(dCode, aCode) => {
+              const next = { ...notas, [dCode]: { ...(notas[dCode] ?? {}) } }
+              delete next[dCode][aCode]
+              setNotas(next)
+              localStorage.setItem("ars_mab3_notas", JSON.stringify(next))
+            }} />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-auto p-5">
+            <SubvencoesView
+              subvencoes={subvencoes}
+              onAdd={sv => {
+                const next = [...subvencoes, sv]
+                setSubvencoes(next)
+                localStorage.setItem("ars_mab3_subvencoes", JSON.stringify(next))
+                // Apply value to dept ajustes
+                const d = BALANCETE_DEPT[sv.deptCode]
+                if (!d || !d.contas[sv.contaCode]) return
+                const { realPeriodo } = getPeriodData(d, sv.contaCode, selectedMeses)
+                const proj = (realPeriodo / nMeses) * 12
+                const incoming = parseBR(sv.valor) * (sv.tipo === "enviar" ? -1 : 1)
+                const existing = parseBR(ajustes[sv.deptCode]?.[sv.contaCode]?.valor ?? "")
+                const newValorNum = existing + incoming
+                const newValorStr = (newValorNum < 0 ? "-" : "") + applyMask(String(Math.round(Math.abs(newValorNum) * 100)))
+                const newPct = proj !== 0 ? (newValorNum / proj * 100).toFixed(2).replace(".", ",") : ""
+                saveAjustes({ ...ajustes, [sv.deptCode]: { ...(ajustes[sv.deptCode] ?? {}), [sv.contaCode]: { pct: newPct, valor: newValorStr } } })
+              }}
+              onDelete={id => {
+                const next = subvencoes.filter(s => s.id !== id)
+                setSubvencoes(next)
+                localStorage.setItem("ars_mab3_subvencoes", JSON.stringify(next))
+              }}
+            />
           </div>
         )}
       </div>
@@ -1230,6 +1346,197 @@ function ResumoOperacional({ ajustes, selectedMeses, nMeses }: {
           </table>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Notas View ────────────────────────────────────────────────────────────────
+function NotasView({ notas, onDelete }: {
+  notas: Record<string, Record<string, string>>
+  onDelete: (dCode: string, aCode: string) => void
+}) {
+  const entries: { dCode: string; dNome: string; aCode: string; aNome: string; nota: string }[] = []
+  for (const [dCode, accMap] of Object.entries(notas)) {
+    const d = BALANCETE_DEPT[dCode]
+    const dNome = d?.nome ?? dCode
+    for (const [aCode, nota] of Object.entries(accMap)) {
+      if (!nota.trim()) continue
+      const aNome = d?.contas[aCode]?.nome ?? aCode
+      entries.push({ dCode, dNome, aCode, aNome, nota })
+    }
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-48 gap-3" style={{ color: "#94A3B8" }}>
+        <MessageSquare className="w-10 h-10 opacity-30" />
+        <p className="text-sm">Nenhuma anotação ainda. Clique no ícone 💬 ao lado de uma conta no Edição para adicionar.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-3">
+      <h2 className="text-sm font-bold mb-4" style={{ color: "#13293D" }}>Notas do Budget</h2>
+      {entries.map(({ dCode, dNome, aCode, aNome, nota }) => (
+        <div key={`${dCode}-${aCode}`} className="rounded-xl p-4" style={{ border: "1px solid #EDE9FE", background: "#FAF5FF" }}>
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div>
+              <p className="text-xs font-semibold" style={{ color: "#6D28D9" }}>{dNome}</p>
+              <p className="text-xs" style={{ color: "#7C3AED" }}>
+                <span className="font-mono mr-1">{aCode}</span>— {aNome}
+              </p>
+            </div>
+            <button onClick={() => onDelete(dCode, aCode)} className="text-slate-300 hover:text-red-400">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <p className="text-xs whitespace-pre-wrap" style={{ color: "#374151" }}>{nota}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Subvenções View ───────────────────────────────────────────────────────────
+const SUBV_CONTAS_REC = [
+  "3190000","3191000","3191100","3191200","3191300","3191400","3191500",
+  "3192000","3193000","3193100","3193200","3193300","3193400","3193500",
+  "3194000","3195000","3196000","3197000","3198000","3199000",
+]
+const SUBV_CONTAS_ENV = [
+  "4190000","4191000","4191100","4191200","4191300","4191400","4191500",
+  "4192000","4193000","4193100","4193200","4193300","4193400","4193500",
+  "4194000","4195000","4196000","4197000","4198000","4199000",
+]
+
+function SubvencoesView({ subvencoes, onAdd, onDelete }: {
+  subvencoes: SubvencaoEntry[]
+  onAdd: (sv: SubvencaoEntry) => void
+  onDelete: (id: string) => void
+}) {
+  const [tipo, setTipo] = useState<"receber" | "enviar">("receber")
+  const [deptCode, setDeptCode] = useState("")
+  const [contaCode, setContaCode] = useState("")
+  const [valor, setValor] = useState("")
+  const [descricao, setDescricao] = useState("")
+
+  const allDepts = Object.entries(BALANCETE_DEPT).map(([code, d]) => ({ code, nome: d.nome })).sort((a,b) => a.code.localeCompare(b.code))
+  const contasOpts = tipo === "receber" ? SUBV_CONTAS_REC : SUBV_CONTAS_ENV
+
+  // Show real names for conta options from any dept that has them
+  function contaNome(code: string) {
+    for (const d of Object.values(BALANCETE_DEPT)) {
+      if (d.contas[code]?.nome) return d.contas[code].nome
+    }
+    return code
+  }
+
+  function handleAdd() {
+    if (!deptCode || !contaCode || !valor) return
+    const digits = valor.replace(/\D/g,"")
+    if (!digits) return
+    const masked = applyMask(digits)
+    onAdd({ id: Date.now().toString(), tipo, deptCode, contaCode, valor: masked, descricao })
+    setValor(""); setDescricao(""); setContaCode("")
+  }
+
+  const totalRec = subvencoes.filter(s => s.tipo === "receber").reduce((acc, s) => acc + parseBR(s.valor), 0)
+  const totalEnv = subvencoes.filter(s => s.tipo === "enviar").reduce((acc, s) => acc + parseBR(s.valor), 0)
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-5">
+      <h2 className="text-sm font-bold" style={{ color: "#13293D" }}>Calendário de Subvenções</h2>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "A Receber", val: totalRec, color: "#059669" },
+          { label: "A Enviar", val: totalEnv, color: "#DC2626" },
+          { label: "Saldo Líquido", val: totalRec - totalEnv, color: totalRec - totalEnv >= 0 ? "#059669" : "#DC2626" },
+        ].map(k => (
+          <div key={k.label} className="rounded-xl p-3" style={{ border: "1px solid #E2E8F0", background: "#F8FAFC" }}>
+            <p className="text-xs text-slate-500">{k.label}</p>
+            <p className="text-sm font-bold mt-0.5" style={{ color: k.color }}>{fmtBR(k.val)}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Form */}
+      <div className="rounded-xl p-4 space-y-3" style={{ border: "1px solid #E2E8F0", background: "#F8FAFC" }}>
+        <p className="text-xs font-semibold" style={{ color: "#374151" }}>Nova Subvenção</p>
+        <div className="flex gap-2">
+          {(["receber","enviar"] as const).map(t => (
+            <button key={t} onClick={() => { setTipo(t); setContaCode("") }}
+              className="px-3 py-1 rounded-lg text-xs font-medium border transition-colors"
+              style={tipo === t ? { background: t === "receber" ? "#059669" : "#DC2626", color: "#fff", borderColor: "transparent" } : { borderColor: "#E2E8F0", color: "#374151" }}>
+              {t === "receber" ? "A Receber" : "A Enviar"}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs text-slate-500 mb-0.5 block">Departamento</label>
+            <select value={deptCode} onChange={e => setDeptCode(e.target.value)}
+              className="w-full text-xs rounded border px-2 py-1.5 outline-none" style={{ borderColor: "#E2E8F0" }}>
+              <option value="">Selecionar...</option>
+              {allDepts.map(d => <option key={d.code} value={d.code}>{d.code} — {d.nome}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-slate-500 mb-0.5 block">Conta ({tipo === "receber" ? "319x" : "419x"})</label>
+            <select value={contaCode} onChange={e => setContaCode(e.target.value)}
+              className="w-full text-xs rounded border px-2 py-1.5 outline-none" style={{ borderColor: "#E2E8F0" }}>
+              <option value="">Selecionar...</option>
+              {contasOpts.map(c => <option key={c} value={c}>{c} — {contaNome(c)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-slate-500 mb-0.5 block">Valor (R$)</label>
+            <input type="text" value={valor} placeholder="0,00"
+              onChange={e => { const d = e.target.value.replace(/\D/g,""); setValor(d ? applyMask(d) : "") }}
+              className="w-full text-xs rounded border px-2 py-1.5 outline-none text-right" style={{ borderColor: "#E2E8F0" }} />
+          </div>
+          <div>
+            <label className="text-xs text-slate-500 mb-0.5 block">Descrição (opcional)</label>
+            <input type="text" value={descricao} placeholder="Ex: Repasse UNASP" onChange={e => setDescricao(e.target.value)}
+              className="w-full text-xs rounded border px-2 py-1.5 outline-none" style={{ borderColor: "#E2E8F0" }} />
+          </div>
+        </div>
+        <button onClick={handleAdd}
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium"
+          style={{ background: "#006494", color: "#fff" }}>
+          <Plus className="w-3.5 h-3.5" /> Adicionar e Aplicar no Budget
+        </button>
+      </div>
+
+      {/* List */}
+      {subvencoes.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-slate-500">Subvenções cadastradas</p>
+          {subvencoes.map(sv => {
+            const d = BALANCETE_DEPT[sv.deptCode]
+            return (
+              <div key={sv.id} className="flex items-center gap-3 rounded-lg px-3 py-2"
+                style={{ border: "1px solid #E2E8F0", background: sv.tipo === "receber" ? "#F0FDF4" : "#FEF2F2" }}>
+                <span className="text-xs font-semibold w-16 shrink-0" style={{ color: sv.tipo === "receber" ? "#059669" : "#DC2626" }}>
+                  {sv.tipo === "receber" ? "▼ RECEBER" : "▲ ENVIAR"}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium truncate">{d?.nome ?? sv.deptCode}</p>
+                  <p className="text-xs text-slate-400">{sv.contaCode}{sv.descricao ? ` · ${sv.descricao}` : ""}</p>
+                </div>
+                <span className="text-xs font-bold shrink-0" style={{ color: sv.tipo === "receber" ? "#059669" : "#DC2626" }}>
+                  R$ {sv.valor}
+                </span>
+                <button onClick={() => onDelete(sv.id)} className="text-slate-300 hover:text-red-400 shrink-0">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
