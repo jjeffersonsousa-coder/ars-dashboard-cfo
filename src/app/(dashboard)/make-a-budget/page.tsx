@@ -58,6 +58,10 @@ function parseBR(s: string): number {
   if (!s || s === "0,00") return 0
   return parseFloat(s.replace(/\./g,"").replace(",",".")) || 0
 }
+function flipSign(s: string): string {
+  if (!s || s === "-") return s
+  return s.startsWith("-") ? s.slice(1) : "-" + s
+}
 function applyMask(raw: string): string {
   const digits = raw.replace(/\D/g,"")
   if (!digits) return ""
@@ -326,7 +330,10 @@ export default function MakeABudgetPage() {
   const handleValor = (dCode: string, aCode: string, rawInput: string) => {
     const isNeg = rawInput.startsWith("-")
     const digits = rawInput.replace(/\D/g, "")
-    const valor = (isNeg ? "-" : "") + (digits ? applyMask(digits) : "")
+    // User types in "expense direction": positive = more expense, negative = less expense
+    // For despesas (4xxx) we flip the sign before storing (expenses are stored negative)
+    const typed = (isNeg ? "-" : "") + (digits ? applyMask(digits) : "")
+    const valor = aCode.startsWith("4") && typed && typed !== "-" ? flipSign(typed) : typed
     if (dCode === TOTAL_DEPT_CODE) {
       let next = { ...ajustes }
       for (const [dc, d] of Object.entries(BALANCETE_DEPT)) {
@@ -615,7 +622,7 @@ export default function MakeABudgetPage() {
             {!isTot ? (
               <input
                 type="text"
-                value={ajuste.valor}
+                value={code.startsWith("4") && ajuste.valor ? flipSign(ajuste.valor) : ajuste.valor}
                 onChange={e => handleValor(selectedDept, code, e.target.value)}
                 placeholder="0,00"
                 className="w-full text-right px-1.5 py-0.5 rounded border outline-none"
