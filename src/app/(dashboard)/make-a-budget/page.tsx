@@ -835,20 +835,21 @@ export default function MakeABudgetPage() {
       {/* ── RIGHT: Main area ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
 
-        {/* Header */}
-        <div className="shrink-0 px-4 py-2.5 flex flex-wrap gap-2 items-center" style={{ background: "#fff", borderBottom: "1px solid #E2E8F0" }}>
+        {/* ── Header row 1: title + status + tabs ── */}
+        <div className="shrink-0 px-3 py-2 flex items-center gap-2" style={{ background: "#fff", borderBottom: "1px solid #E2E8F0" }}>
           {!deptPanelOpen && (
             <button onClick={() => setDeptPanelOpen(true)} title="Mostrar departamentos" className="p-1 rounded hover:bg-slate-100 shrink-0">
               <PanelLeftOpen className="w-4 h-4" style={{ color: "#64748B" }} />
             </button>
           )}
-          <div className="shrink-0 mr-1">
+          <div className="shrink-0 min-w-0">
             <p className="text-sm font-bold leading-none" style={{ color: "#13293D" }}>Make a Budget</p>
-            <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>
+            <p className="text-xs mt-0.5 truncate" style={{ color: "#64748B", maxWidth: 260 }}>
               {dept ? `${selectedDept !== TOTAL_DEPT_CODE ? `${selectedDept} — ` : ""}${dept.nome} · Fundo ${dept.fundo}` : "Selecione um departamento"}
             </p>
           </div>
-          {/* Status buttons */}
+
+          {/* Status buttons — only in Edição */}
           {dept && tab === "edicao" && (() => {
             const curStatus = deptStatuses[selectedDept] as DeptStatus | undefined
             return (
@@ -871,7 +872,7 @@ export default function MakeABudgetPage() {
           })()}
 
           {/* Tabs */}
-          <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: "#E2E8F0" }}>
+          <div className="flex rounded-lg overflow-hidden border ml-auto" style={{ borderColor: "#E2E8F0" }}>
             {([
               { key: "edicao", icon: List, label: "Edição" },
               { key: "resumo-fundos", icon: BarChart3, label: "Por Fundos" },
@@ -887,110 +888,107 @@ export default function MakeABudgetPage() {
             ))}
           </div>
 
-          {tab === "edicao" && (
-            <>
-              {/* Receitas/Despesas */}
-              <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: "#E2E8F0" }}>
-                <button onClick={() => setViewReceitas(false)}
-                  className="px-2.5 py-1.5 text-xs font-semibold"
-                  style={{ background: !viewReceitas ? "#DC2626" : "#fff", color: !viewReceitas ? "#fff" : "#6B7280" }}>
-                  Despesas
-                </button>
-                <button onClick={() => setViewReceitas(true)}
-                  className="px-2.5 py-1.5 text-xs font-semibold"
-                  style={{ background: viewReceitas ? "#059669" : "#fff", color: viewReceitas ? "#fff" : "#6B7280" }}>
-                  Receitas
-                </button>
-              </div>
-
-              {/* Month selector */}
-              <div className="flex gap-1 flex-wrap">
-                {TODOS_MESES.map(mes => {
-                  const available = !!MES_TO_KEY[mes]
-                  const sel = selectedMeses.includes(mes)
-                  return (
-                    <button key={mes} onClick={() => toggleMes(mes)} disabled={!available}
-                      style={{
-                        padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 500,
-                        background: sel ? "#006494" : available ? "#F1F5F9" : "#F8FAFC",
-                        color: sel ? "#fff" : available ? "#374151" : "#CBD5E1",
-                        border: `1px solid ${sel ? "#006494" : "#E2E8F0"}`,
-                        cursor: available ? "pointer" : "not-allowed",
-                      }}>
-                      {mes.slice(0,3)}
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3" style={{ color: "#9CA3AF" }} />
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar conta..."
-                  className="pl-6 pr-6 py-1 rounded-lg border outline-none"
-                  style={{ fontSize: 11, borderColor: "#E2E8F0", color: "#374151", width: 160 }} />
-                {search && <button onClick={() => setSearch("")} className="absolute right-1.5 top-1/2 -translate-y-1/2"><X className="w-3 h-3" style={{ color: "#9CA3AF" }} /></button>}
-              </div>
-
-              <div className="flex gap-1">
-                <button onClick={() => setExpanded(new Set(deptCodes))}
-                  className="px-2 py-1 rounded text-xs border" style={{ borderColor: "#E2E8F0", color: "#6B7280" }}>
-                  Expandir tudo
-                </button>
-                <button onClick={() => setExpanded(new Set())}
-                  className="px-2 py-1 rounded text-xs border" style={{ borderColor: "#E2E8F0", color: "#6B7280" }}>
-                  Recolher tudo
-                </button>
-              </div>
-
-              {/* Aplicar a todos */}
-              <div className="flex items-center gap-1 ml-auto">
-                <span className="text-xs" style={{ color: "#94A3B8" }}>% global:</span>
-                <input
-                  type="text" value={globalPct}
-                  onChange={e => setGlobalPct(e.target.value)}
-                  placeholder="ex: 10"
-                  className="w-16 text-right px-1.5 py-1 rounded border outline-none text-xs"
-                  style={{ borderColor: globalPct ? "#006494" : "#E2E8F0" }}
-                />
-                <button onClick={applyToAll}
-                  className="px-2.5 py-1 rounded text-xs font-semibold text-white"
-                  style={{ background: globalPct ? "#006494" : "#CBD5E1" }}
-                  disabled={!globalPct}
-                  title="Aplica o % a todas as contas folha do departamento">
-                  Aplicar a todos
-                </button>
-                <button onClick={() => setShowAddAccount(true)}
-                  className="px-2 py-1 rounded text-xs border font-medium"
-                  style={{ borderColor: "#E2E8F0", color: "#6B7280" }}
-                  title="Adicionar conta ou sub-conta ao departamento">
-                  + Conta
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* PDF export for Por Fundos / Operacional */}
+          {/* PDF for resumo tabs */}
           {(tab === "resumo-fundos" || tab === "resumo-operacional") && (
             <button
               onClick={() => {
                 const el = document.getElementById("resumo-print-area")
                 if (el) exportTabPDF(tab === "resumo-fundos" ? "Resumo por Fundos" : "Resumo Operacional", el.innerHTML)
               }}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium ml-auto"
-              style={{ background: "#13293D", color: "#fff" }}>
-              <Download className="w-3.5 h-3.5" />PDF
-            </button>
-          )}
-
-          {tab === "edicao" && (
-            <button onClick={() => window.print()}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium shrink-0"
               style={{ background: "#13293D", color: "#fff" }}>
               <Download className="w-3.5 h-3.5" />PDF
             </button>
           )}
         </div>
+
+        {/* ── Header row 2: Edição controls toolbar ── */}
+        {tab === "edicao" && (
+          <div className="shrink-0 px-3 py-1.5 flex items-center gap-2 flex-wrap" style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+            {/* Despesas / Receitas */}
+            <div className="flex rounded-lg overflow-hidden border shrink-0" style={{ borderColor: "#E2E8F0" }}>
+              <button onClick={() => setViewReceitas(false)}
+                className="px-2.5 py-1 text-xs font-semibold"
+                style={{ background: !viewReceitas ? "#DC2626" : "#fff", color: !viewReceitas ? "#fff" : "#6B7280" }}>
+                Despesas
+              </button>
+              <button onClick={() => setViewReceitas(true)}
+                className="px-2.5 py-1 text-xs font-semibold"
+                style={{ background: viewReceitas ? "#059669" : "#fff", color: viewReceitas ? "#fff" : "#6B7280" }}>
+                Receitas
+              </button>
+            </div>
+
+            {/* Month selector */}
+            <div className="flex gap-1 shrink-0">
+              {TODOS_MESES.map(mes => {
+                const available = !!MES_TO_KEY[mes]
+                const sel = selectedMeses.includes(mes)
+                return (
+                  <button key={mes} onClick={() => toggleMes(mes)} disabled={!available}
+                    style={{
+                      padding: "2px 7px", borderRadius: 4, fontSize: 10, fontWeight: 500,
+                      background: sel ? "#006494" : available ? "#F1F5F9" : "#F8FAFC",
+                      color: sel ? "#fff" : available ? "#374151" : "#CBD5E1",
+                      border: `1px solid ${sel ? "#006494" : "#E2E8F0"}`,
+                      cursor: available ? "pointer" : "not-allowed",
+                    }}>
+                    {mes.slice(0,3)}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Search */}
+            <div className="relative shrink-0">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3" style={{ color: "#9CA3AF" }} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar conta..."
+                className="pl-6 pr-6 py-1 rounded-lg border outline-none"
+                style={{ fontSize: 11, borderColor: "#E2E8F0", color: "#374151", width: 140 }} />
+              {search && <button onClick={() => setSearch("")} className="absolute right-1.5 top-1/2 -translate-y-1/2"><X className="w-3 h-3" style={{ color: "#9CA3AF" }} /></button>}
+            </div>
+
+            {/* Expand / Collapse */}
+            <div className="flex gap-1 shrink-0">
+              <button onClick={() => setExpanded(new Set(deptCodes))}
+                className="px-2 py-1 rounded text-xs border" style={{ borderColor: "#E2E8F0", color: "#6B7280" }}>
+                Expandir tudo
+              </button>
+              <button onClick={() => setExpanded(new Set())}
+                className="px-2 py-1 rounded text-xs border" style={{ borderColor: "#E2E8F0", color: "#6B7280" }}>
+                Recolher tudo
+              </button>
+            </div>
+
+            {/* % global + actions */}
+            <div className="flex items-center gap-1 ml-auto shrink-0">
+              <span className="text-xs" style={{ color: "#94A3B8" }}>% global:</span>
+              <input
+                type="text" value={globalPct}
+                onChange={e => setGlobalPct(e.target.value)}
+                placeholder="ex: 10"
+                className="w-14 text-right px-1.5 py-1 rounded border outline-none text-xs"
+                style={{ borderColor: globalPct ? "#006494" : "#E2E8F0" }}
+              />
+              <button onClick={applyToAll}
+                className="px-2.5 py-1 rounded text-xs font-semibold text-white shrink-0"
+                style={{ background: globalPct ? "#006494" : "#CBD5E1" }}
+                disabled={!globalPct}>
+                Aplicar a todos
+              </button>
+              <button onClick={() => setShowAddAccount(true)}
+                className="px-2 py-1 rounded text-xs border font-medium shrink-0"
+                style={{ borderColor: "#E2E8F0", color: "#6B7280" }}>
+                + Conta
+              </button>
+              <button onClick={() => window.print()}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium shrink-0"
+                style={{ background: "#13293D", color: "#fff" }}>
+                <Download className="w-3 h-3" />PDF
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ── KPI bar (edição only) ── */}
         {tab === "edicao" && dept && (
