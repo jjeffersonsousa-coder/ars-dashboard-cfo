@@ -120,7 +120,6 @@ function computeGroupTotal(
   function leafTotal(lCode: string): number {
     const cv = d.contas[lCode]
     if (!cv) return 0
-    // Always use real-based projection as base — same formula as Edição tab
     const real = sorted.length === 0 ? 0
       : sorted.length === 1 ? (cv.d[sorted[0]]?.[1] ?? 0)
       : (cv.d[last]?.[3] ?? 0)
@@ -129,11 +128,21 @@ function computeGroupTotal(
     return proj + (ajuste?.valor ? parseBR(ajuste.valor) : 0)
   }
 
+  // Use same meaningful-prefix logic as renderRow tree (strip trailing zeros)
   const allCodes = Object.keys(d.contas)
-  const groupAccounts = allCodes.filter(c => c === groupPrefix || c.startsWith(groupPrefix))
+  const meaningful: Record<string, string> = {}
+  for (const c of allCodes) meaningful[c] = c.replace(/0+$/, "") || c[0]
+
+  const groupM = meaningful[groupPrefix] ?? groupPrefix.replace(/0+$/, "") || groupPrefix[0]
+
+  // Collect all accounts that are the group itself or descendants
+  const groupAccounts = allCodes.filter(c => c === groupPrefix || meaningful[c].startsWith(groupM))
+
+  // Leaves = accounts in group with no children within the group
   const leaves = groupAccounts.filter(c => {
     if (c === groupPrefix) return false
-    return !groupAccounts.some(o => o !== c && o.startsWith(c))
+    const cm = meaningful[c]
+    return !groupAccounts.some(o => o !== c && meaningful[o].startsWith(cm))
   })
 
   if (leaves.length === 0) return leafTotal(groupPrefix)
