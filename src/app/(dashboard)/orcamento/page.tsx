@@ -385,24 +385,30 @@ export default function OrcamentoPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2 no-print" onClick={handlePrint}>
-            <Printer className="w-4 h-4" />
-            Exportar PDF
-          </Button>
-          {isSuperAdmin && (
-            <div className="flex flex-col items-end gap-1">
-              <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
-              <Button className="gap-2" style={{ backgroundColor: "#006494" }}
-                onClick={() => fileInputRef.current?.click()} disabled={importStatus === "loading"}>
-                {importStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                Importar Balancete
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2">
+              <Button className="gap-2 no-print" style={{ backgroundColor: "#0F766E" }} onClick={handlePrint}>
+                <Printer className="w-4 h-4" />
+                Exportar PDF
               </Button>
+              {isSuperAdmin && (
+                <>
+                  <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
+                  <Button className="gap-2" style={{ backgroundColor: "#006494" }}
+                    onClick={() => fileInputRef.current?.click()} disabled={importStatus === "loading"}>
+                    {importStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    Importar Balancete
+                  </Button>
+                </>
+              )}
+            </div>
+            {isSuperAdmin && (
               <button onClick={() => setShowImportHint(!showImportHint)}
                 className="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2">
                 Como importar?
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
