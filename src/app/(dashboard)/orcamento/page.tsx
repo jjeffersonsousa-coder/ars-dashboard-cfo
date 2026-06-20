@@ -271,14 +271,22 @@ export default function OrcamentoPage() {
     return respMap[codigo] || []
   }
 
-  // All unique dept options for dropdown — "código — nome"
-  const allNomes = [...new Set(data.map(d => `${d.codigo} — ${d.nome}`))].sort((a, b) => {
+  // All unique dept options — filtered by selected responsáveis (cross-filter)
+  const deptosParaExibir = selectedResps.length > 0
+    ? data.filter(d => selectedResps.some(r => (respMap[d.codigo] ?? []).includes(r)))
+    : data
+  const allNomes = [...new Set(deptosParaExibir.map(d => `${d.codigo} — ${d.nome}`))].sort((a, b) => {
     const ca = a.split(" — ")[0]; const cb = b.split(" — ")[0]
     return ca.localeCompare(cb, undefined, { numeric: true })
   })
 
-  // All unique responsáveis actually in use
-  const allRespsInUse = [...new Set(Object.values(respMap).flat())].sort()
+  // All unique responsáveis — filtered by selected departments (cross-filter)
+  const respsParaExibir = selectedDeptos.length > 0
+    ? [...new Set(selectedDeptos.flatMap(opt => {
+        const codigo = opt.split(" — ")[0]
+        return respMap[codigo] ?? []
+      }))].sort()
+    : [...new Set(Object.values(respMap).flat())].sort()
 
   const filtered = data.filter(d => {
     if (selectedDeptos.length > 0 && !selectedDeptos.some(opt => opt.startsWith(d.codigo + " — "))) return false
@@ -515,7 +523,7 @@ export default function OrcamentoPage() {
             <MultiSelectDropdown
               label="Responsável"
               placeholder="Todos os responsáveis"
-              options={allRespsInUse}
+              options={respsParaExibir}
               selected={selectedResps}
               onChange={setSelectedResps}
             />
