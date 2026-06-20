@@ -1063,23 +1063,68 @@ export default function MakeABudgetPage() {
           <div className="flex-1 overflow-auto p-5">
             <SubvencoesView
               subvencoes={subvencoes}
-              onAdd={sv => {
-                const next = [...subvencoes, sv]
-                setSubvencoes(next)
-                localStorage.setItem("ars_mab3_subvencoes", JSON.stringify(next))
-                // Apply value to dept ajustes
-                const d = BALANCETE_DEPT[sv.deptCode]
-                if (!d || !d.contas[sv.contaCode]) return
-                const { realPeriodo } = getPeriodData(d, sv.contaCode, selectedMeses)
-                const proj = (realPeriodo / nMeses) * 12
-                const incoming = parseBR(sv.valor) * (sv.tipo === "enviar" ? -1 : 1)
-                const existing = parseBR(ajustes[sv.deptCode]?.[sv.contaCode]?.valor ?? "")
-                const newValorNum = existing + incoming
-                const newValorStr = (newValorNum < 0 ? "-" : "") + applyMask(String(Math.round(Math.abs(newValorNum) * 100)))
-                const newPct = proj !== 0 ? (newValorNum / proj * 100).toFixed(2).replace(".", ",") : ""
-                saveAjustes({ ...ajustes, [sv.deptCode]: { ...(ajustes[sv.deptCode] ?? {}), [sv.contaCode]: { pct: newPct, valor: newValorStr } } })
+              onAdd={(sv, oldSv) => {
+                // Helper: apply one subvenção's delta to ajustes
+                const applySubv = (
+                  cur: Record<string, Record<string, AjusteData>>,
+                  entry: SubvencaoEntry,
+                  sign: 1 | -1
+                ) => {
+                  const d = BALANCETE_DEPT[entry.deptCode]
+                  const incoming = parseBR(entry.valor) * (entry.tipo === "enviar" ? -1 : 1) * sign
+                  const existing = parseBR(cur[entry.deptCode]?.[entry.contaCode]?.valor ?? "")
+                  const newNum = existing + incoming
+                  const newStr = (newNum < 0 ? "-" : "") + applyMask(String(Math.round(Math.abs(newNum) * 100)))
+                  const proj = d?.contas[entry.contaCode]
+                    ? (() => { const { realPeriodo } = getPeriodData(d, entry.contaCode, selectedMeses); return (realPeriodo / nMeses) * 12 })()
+                    : 0
+                  const newPct = proj !== 0 ? (newNum / proj * 100).toFixed(2).replace(".", ",") : ""
+                  return { ...cur, [entry.deptCode]: { ...(cur[entry.deptCode] ?? {}), [entry.contaCode]: { pct: newPct, valor: newStr } } }
+                }
+
+                // Ensure account appears in Edição (add as custom if not in dept contas)
+                const ensureCustom = (entry: SubvencaoEntry) => {
+                  const d = BALANCETE_DEPT[entry.deptCode]
+                  if (d?.contas[entry.contaCode]) return
+                  let nome = entry.contaCode
+                  for (const dept of Object.values(BALANCETE_DEPT)) {
+                    if (dept.contas[entry.contaCode]?.nome) { nome = dept.contas[entry.contaCode].nome; break }
+                  }
+                  const existing = (customAccounts[entry.deptCode] ?? []).filter(c => c.code !== entry.contaCode)
+                  const next = { ...customAccounts, [entry.deptCode]: [...existing, { code: entry.contaCode, nome }] }
+                  setCustomAccounts(next)
+                  localStorage.setItem(STORAGE_CUSTOM, JSON.stringify(next))
+                }
+
+                let nextAjustes = { ...ajustes }
+                // If editing (oldSv provided), reverse old contribution first
+                if (oldSv) nextAjustes = applySubv(nextAjustes, oldSv, -1)
+                // Apply new contribution
+                nextAjustes = applySubv(nextAjustes, sv, 1)
+                saveAjustes(nextAjustes)
+                ensureCustom(sv)
+
+                const nextList = oldSv
+                  ? [...subvencoes.filter(s => s.id !== oldSv.id), sv]
+                  : [...subvencoes, sv]
+                setSubvencoes(nextList)
+                localStorage.setItem("ars_mab3_subvencoes", JSON.stringify(nextList))
               }}
               onDelete={id => {
+                const sv = subvencoes.find(s => s.id === id)
+                if (sv) {
+                  // Reverse the contribution from ajustes
+                  const d = BALANCETE_DEPT[sv.deptCode]
+                  const incoming = parseBR(sv.valor) * (sv.tipo === "enviar" ? -1 : 1)
+                  const existing = parseBR(ajustes[sv.deptCode]?.[sv.contaCode]?.valor ?? "")
+                  const newNum = existing - incoming
+                  const newStr = newNum === 0 ? "" : (newNum < 0 ? "-" : "") + applyMask(String(Math.round(Math.abs(newNum) * 100)))
+                  const proj = d?.contas[sv.contaCode]
+                    ? (() => { const { realPeriodo } = getPeriodData(d, sv.contaCode, selectedMeses); return (realPeriodo / nMeses) * 12 })()
+                    : 0
+                  const newPct = proj !== 0 && newNum !== 0 ? (newNum / proj * 100).toFixed(2).replace(".", ",") : ""
+                  saveAjustes({ ...ajustes, [sv.deptCode]: { ...(ajustes[sv.deptCode] ?? {}), [sv.contaCode]: { pct: newPct, valor: newStr } } })
+                }
                 const next = subvencoes.filter(s => s.id !== id)
                 setSubvencoes(next)
                 localStorage.setItem("ars_mab3_subvencoes", JSON.stringify(next))
@@ -1472,7 +1517,7 @@ const SUBV_CONTAS_ENV = [
 
 function SubvencoesView({ subvencoes, onAdd, onDelete }: {
   subvencoes: SubvencaoEntry[]
-  onAdd: (sv: SubvencaoEntry) => void
+  onAdd: (sv: SubvencaoEntry, oldSv?: SubvencaoEntry) => void
   onDelete: (id: string) => void
 }) {
   const [tipo, setTipo] = useState<"receber" | "enviar">("receber")
@@ -1480,6 +1525,7 @@ function SubvencoesView({ subvencoes, onAdd, onDelete }: {
   const [contaCode, setContaCode] = useState("")
   const [valor, setValor] = useState("")
   const [descricao, setDescricao] = useState("")
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const allDepts = Object.entries(BALANCETE_DEPT).map(([code, d]) => ({ code, nome: d.nome })).sort((a,b) => a.code.localeCompare(b.code))
 
@@ -1496,13 +1542,28 @@ function SubvencoesView({ subvencoes, onAdd, onDelete }: {
       .sort((a, b) => a.code.localeCompare(b.code))
   }, [tipo])
 
+  function startEdit(sv: SubvencaoEntry) {
+    setEditingId(sv.id)
+    setTipo(sv.tipo)
+    setDeptCode(sv.deptCode)
+    setContaCode(sv.contaCode)
+    setValor(sv.valor)
+    setDescricao(sv.descricao)
+  }
+
+  function cancelEdit() {
+    setEditingId(null); setTipo("receber"); setDeptCode(""); setContaCode(""); setValor(""); setDescricao("")
+  }
+
   function handleAdd() {
     if (!deptCode || !contaCode || !valor) return
     const digits = valor.replace(/\D/g,"")
     if (!digits) return
     const masked = applyMask(digits)
-    onAdd({ id: Date.now().toString(), tipo, deptCode, contaCode, valor: masked, descricao })
-    setValor(""); setDescricao(""); setContaCode("")
+    const newSv: SubvencaoEntry = { id: editingId ?? Date.now().toString(), tipo, deptCode, contaCode, valor: masked, descricao }
+    const oldSv = editingId ? subvencoes.find(s => s.id === editingId) : undefined
+    onAdd(newSv, oldSv)
+    cancelEdit()
   }
 
   const totalRec = subvencoes.filter(s => s.tipo === "receber").reduce((acc, s) => acc + parseBR(s.valor), 0)
@@ -1527,8 +1588,8 @@ function SubvencoesView({ subvencoes, onAdd, onDelete }: {
       </div>
 
       {/* Form */}
-      <div className="rounded-xl p-4 space-y-3" style={{ border: "1px solid #E2E8F0", background: "#F8FAFC" }}>
-        <p className="text-xs font-semibold" style={{ color: "#374151" }}>Nova Subvenção</p>
+      <div className="rounded-xl p-4 space-y-3" style={{ border: `1px solid ${editingId ? "#006494" : "#E2E8F0"}`, background: editingId ? "#EFF6FF" : "#F8FAFC" }}>
+        <p className="text-xs font-semibold" style={{ color: "#374151" }}>{editingId ? "✏️ Editando Subvenção" : "Nova Subvenção"}</p>
         <div className="flex gap-2">
           {(["receber","enviar"] as const).map(t => (
             <button key={t} onClick={() => { setTipo(t); setContaCode("") }}
@@ -1567,11 +1628,20 @@ function SubvencoesView({ subvencoes, onAdd, onDelete }: {
               className="w-full text-xs rounded border px-2 py-1.5 outline-none" style={{ borderColor: "#E2E8F0" }} />
           </div>
         </div>
-        <button onClick={handleAdd}
-          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium"
-          style={{ background: "#006494", color: "#fff" }}>
-          <Plus className="w-3.5 h-3.5" /> Adicionar e Aplicar no Budget
-        </button>
+        <div className="flex gap-2">
+          <button onClick={handleAdd}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium"
+            style={{ background: "#006494", color: "#fff" }}>
+            <Plus className="w-3.5 h-3.5" /> {editingId ? "Salvar Alterações" : "Adicionar e Aplicar no Budget"}
+          </button>
+          {editingId && (
+            <button onClick={cancelEdit}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium border"
+              style={{ borderColor: "#E2E8F0", color: "#6B7280" }}>
+              Cancelar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* List */}
@@ -1580,9 +1650,10 @@ function SubvencoesView({ subvencoes, onAdd, onDelete }: {
           <p className="text-xs font-semibold text-slate-500">Subvenções cadastradas</p>
           {subvencoes.map(sv => {
             const d = BALANCETE_DEPT[sv.deptCode]
+            const isEditing = editingId === sv.id
             return (
               <div key={sv.id} className="flex items-center gap-3 rounded-lg px-3 py-2"
-                style={{ border: "1px solid #E2E8F0", background: sv.tipo === "receber" ? "#F0FDF4" : "#FEF2F2" }}>
+                style={{ border: `1px solid ${isEditing ? "#006494" : "#E2E8F0"}`, background: isEditing ? "#DBEAFE" : sv.tipo === "receber" ? "#F0FDF4" : "#FEF2F2" }}>
                 <span className="text-xs font-semibold w-16 shrink-0" style={{ color: sv.tipo === "receber" ? "#059669" : "#DC2626" }}>
                   {sv.tipo === "receber" ? "▼ RECEBER" : "▲ ENVIAR"}
                 </span>
@@ -1593,7 +1664,11 @@ function SubvencoesView({ subvencoes, onAdd, onDelete }: {
                 <span className="text-xs font-bold shrink-0" style={{ color: sv.tipo === "receber" ? "#059669" : "#DC2626" }}>
                   R$ {sv.valor}
                 </span>
-                <button onClick={() => onDelete(sv.id)} className="text-slate-300 hover:text-red-400 shrink-0">
+                <button onClick={() => isEditing ? cancelEdit() : startEdit(sv)}
+                  className="text-slate-300 hover:text-blue-400 shrink-0" title="Editar">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                </button>
+                <button onClick={() => onDelete(sv.id)} className="text-slate-300 hover:text-red-400 shrink-0" title="Excluir">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
