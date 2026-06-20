@@ -1385,14 +1385,23 @@ function NotasView({ notas, onDelete }: {
   notas: Record<string, Record<string, string>>
   onDelete: (dCode: string, aCode: string) => void
 }) {
-  const entries: { dCode: string; dNome: string; aCode: string; aNome: string; nota: string }[] = []
+  const entries: { dCode: string; dNome: string; aCode: string; aNome: string; nota: string; isSub: boolean; subLabel: string }[] = []
   for (const [dCode, accMap] of Object.entries(notas)) {
     const d = BALANCETE_DEPT[dCode]
     const dNome = d?.nome ?? dCode
     for (const [aCode, nota] of Object.entries(accMap)) {
       if (!nota.trim()) continue
-      const aNome = d?.contas[aCode]?.nome ?? aCode
-      entries.push({ dCode, dNome, aCode, aNome, nota })
+      const subMatch = aCode.match(/^(.+?)__sub__(.+)$/)
+      if (subMatch) {
+        const parentCode = subMatch[1]
+        const subCode = subMatch[2]
+        const parentNome = d?.contas[parentCode]?.nome ?? parentCode
+        const subNome = d?.contas[parentCode]?.sub?.[subCode]?.nome ?? subCode
+        entries.push({ dCode, dNome, aCode, aNome: parentNome, nota, isSub: true, subLabel: `${subCode} — ${subNome}` })
+      } else {
+        const aNome = d?.contas[aCode]?.nome ?? aCode
+        entries.push({ dCode, dNome, aCode, aNome, nota, isSub: false, subLabel: "" })
+      }
     }
   }
 
@@ -1408,13 +1417,17 @@ function NotasView({ notas, onDelete }: {
   return (
     <div className="max-w-3xl mx-auto space-y-3">
       <h2 className="text-sm font-bold mb-4" style={{ color: "#13293D" }}>Notas do Budget</h2>
-      {entries.map(({ dCode, dNome, aCode, aNome, nota }) => (
+      {entries.map(({ dCode, dNome, aCode, aNome, nota, isSub, subLabel }) => (
         <div key={`${dCode}-${aCode}`} className="rounded-xl p-4" style={{ border: "1px solid #EDE9FE", background: "#FAF5FF" }}>
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
               <p className="text-xs font-semibold" style={{ color: "#6D28D9" }}>{dCode} — {dNome}</p>
               <p className="text-xs" style={{ color: "#7C3AED" }}>
-                <span className="font-mono mr-1">{aCode}</span>— {aNome}
+                {isSub ? (
+                  <><span className="opacity-70">{aNome}</span><span className="mx-1 opacity-40">›</span><span className="font-medium">{subLabel}</span></>
+                ) : (
+                  <><span className="font-mono mr-1">{aCode}</span>— {aNome}</>
+                )}
               </p>
             </div>
             <button onClick={() => onDelete(dCode, aCode)} className="text-slate-300 hover:text-red-400">
