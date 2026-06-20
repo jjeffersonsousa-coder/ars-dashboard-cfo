@@ -133,7 +133,8 @@ function computeGroupTotal(
   const meaningful: Record<string, string> = {}
   for (const c of allCodes) meaningful[c] = c.replace(/0+$/, "") || c[0]
 
-  const groupM = meaningful[groupPrefix] ?? groupPrefix.replace(/0+$/, "") || groupPrefix[0]
+  const stripped = groupPrefix.replace(/0+$/, "")
+  const groupM = meaningful[groupPrefix] ?? (stripped || groupPrefix[0])
 
   // Collect all accounts that are the group itself or descendants
   const groupAccounts = allCodes.filter(c => c === groupPrefix || meaningful[c].startsWith(groupM))
