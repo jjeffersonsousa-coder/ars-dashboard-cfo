@@ -542,15 +542,13 @@ export default function MakeABudgetPage() {
                 ? depth === 0 ? "#EFF6FF" : depth === 1 ? "#F0F9FF" : "#F8FAFC"
                 : "#fff",
             minHeight: isTot ? 34 : 30,
-            cursor: "pointer",
           }}
-          onClick={() => setSelectedRow(isRowSelected ? null : code)}
         >
           {/* Account code + name */}
           <div
             className="flex items-center gap-1 shrink-0"
             style={{ width: 400, paddingLeft: 10 + indent, paddingRight: 6 }}
-            onClick={e => { e.stopPropagation(); if (isExpandable) { toggleExpand(code); setSelectedRow(code) } else setSelectedRow(isRowSelected ? null : code) }}
+            onClick={e => { e.stopPropagation(); if (isExpandable) toggleExpand(code) }}
           >
             <span className="w-4 shrink-0 flex items-center justify-center">
               {isExpandable
@@ -798,7 +796,7 @@ export default function MakeABudgetPage() {
           <div className="shrink-0 mr-1">
             <p className="text-sm font-bold leading-none" style={{ color: "#13293D" }}>Make a Budget</p>
             <p className="text-xs mt-0.5" style={{ color: "#64748B" }}>
-              {dept ? `${dept.nome} · Fundo ${dept.fundo}` : "Selecione um departamento"}
+              {dept ? `${selectedDept !== TOTAL_DEPT_CODE ? `${selectedDept} — ` : ""}${dept.nome} · Fundo ${dept.fundo}` : "Selecione um departamento"}
             </p>
           </div>
           {/* Status buttons */}
@@ -1382,7 +1380,7 @@ function NotasView({ notas, onDelete }: {
         <div key={`${dCode}-${aCode}`} className="rounded-xl p-4" style={{ border: "1px solid #EDE9FE", background: "#FAF5FF" }}>
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
-              <p className="text-xs font-semibold" style={{ color: "#6D28D9" }}>{dNome}</p>
+              <p className="text-xs font-semibold" style={{ color: "#6D28D9" }}>{dCode} — {dNome}</p>
               <p className="text-xs" style={{ color: "#7C3AED" }}>
                 <span className="font-mono mr-1">{aCode}</span>— {aNome}
               </p>
@@ -1422,15 +1420,19 @@ function SubvencoesView({ subvencoes, onAdd, onDelete }: {
   const [descricao, setDescricao] = useState("")
 
   const allDepts = Object.entries(BALANCETE_DEPT).map(([code, d]) => ({ code, nome: d.nome })).sort((a,b) => a.code.localeCompare(b.code))
-  const contasOpts = tipo === "receber" ? SUBV_CONTAS_REC : SUBV_CONTAS_ENV
 
-  // Show real names for conta options from any dept that has them
-  function contaNome(code: string) {
+  const contasOpts = useMemo(() => {
+    const prefix = tipo === "receber" ? "319" : "419"
+    const seen = new Map<string, string>()
     for (const d of Object.values(BALANCETE_DEPT)) {
-      if (d.contas[code]?.nome) return d.contas[code].nome
+      for (const [code, cv] of Object.entries(d.contas)) {
+        if (code.startsWith(prefix) && !seen.has(code)) seen.set(code, cv.nome)
+      }
     }
-    return code
-  }
+    return [...seen.entries()]
+      .map(([code, nome]) => ({ code, nome }))
+      .sort((a, b) => a.code.localeCompare(b.code))
+  }, [tipo])
 
   function handleAdd() {
     if (!deptCode || !contaCode || !valor) return
@@ -1488,7 +1490,7 @@ function SubvencoesView({ subvencoes, onAdd, onDelete }: {
             <select value={contaCode} onChange={e => setContaCode(e.target.value)}
               className="w-full text-xs rounded border px-2 py-1.5 outline-none" style={{ borderColor: "#E2E8F0" }}>
               <option value="">Selecionar...</option>
-              {contasOpts.map(c => <option key={c} value={c}>{c} — {contaNome(c)}</option>)}
+              {contasOpts.map(c => <option key={c.code} value={c.code}>{c.code} — {c.nome}</option>)}
             </select>
           </div>
           <div>
@@ -1523,7 +1525,7 @@ function SubvencoesView({ subvencoes, onAdd, onDelete }: {
                   {sv.tipo === "receber" ? "▼ RECEBER" : "▲ ENVIAR"}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate">{d?.nome ?? sv.deptCode}</p>
+                  <p className="text-xs font-medium truncate">{sv.deptCode} — {d?.nome ?? sv.deptCode}</p>
                   <p className="text-xs text-slate-400">{sv.contaCode}{sv.descricao ? ` · ${sv.descricao}` : ""}</p>
                 </div>
                 <span className="text-xs font-bold shrink-0" style={{ color: sv.tipo === "receber" ? "#059669" : "#DC2626" }}>
