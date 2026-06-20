@@ -81,7 +81,7 @@ export function Sidebar({ open }: { open: boolean }) {
       style={{ backgroundColor: "#13293D" }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5 shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+      <a href="/dashboard" className="flex items-center gap-3 px-4 py-5 shrink-0 cursor-pointer hover:opacity-80 transition-opacity" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="flex items-center justify-center w-9 h-9 rounded-lg shrink-0 font-bold text-white text-sm"
           style={{ background: "linear-gradient(135deg, #1B98E0, #006494)" }}>
           AR
@@ -92,7 +92,7 @@ export function Sidebar({ open }: { open: boolean }) {
             <p className="text-xs leading-none mt-0.5" style={{ color: "#1B98E0" }}>Dashboard CFO</p>
           </div>
         )}
-      </div>
+      </a>
 
       {/* Nav */}
       <nav className="flex-1 py-4 space-y-0.5 px-2 overflow-y-auto">
