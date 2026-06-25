@@ -79,6 +79,9 @@ export default function ReunioesPage() {
   const [nova, setNova] = useState<Partial<Reuniao>>({})
   const [showAtaModal, setShowAtaModal] = useState(false)
   const [ataText, setAtaText] = useState("")
+  const [showPautaModal, setShowPautaModal] = useState(false)
+  const [editPauta, setEditPauta] = useState<string[]>([])
+  const [novoPautaItem, setNovoPautaItem] = useState("")
   const editorRef = useRef<HTMLDivElement>(null)
 
   const execCmd = useCallback((cmd: string, value?: string) => {
@@ -365,9 +368,17 @@ export default function ReunioesPage() {
 
                 {reuniao.pauta.length > 0 && (
                   <div>
-                    <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
-                      <FileText className="w-4 h-4" /> Pauta
-                    </h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                        <FileText className="w-4 h-4" /> Pauta
+                      </h4>
+                      {(reuniao.criadoPor === userId || nivel <= 2) && (
+                        <button className="text-xs text-blue-600 hover:underline"
+                          onClick={() => { setEditPauta([...reuniao.pauta]); setNovoPautaItem(""); setShowPautaModal(true) }}>
+                          Editar
+                        </button>
+                      )}
+                    </div>
                     <ul className="space-y-1">
                       {reuniao.pauta.map((item, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
@@ -408,6 +419,70 @@ export default function ReunioesPage() {
               Selecione uma reunião para ver os detalhes
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modal Editar Pauta */}
+      {showPautaModal && reuniao && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-bold text-slate-800">Editar Pauta</h3>
+              <button onClick={() => setShowPautaModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
+            </div>
+            <p className="text-sm text-slate-500 mb-4">{reuniao.titulo}</p>
+
+            <ul className="space-y-2 mb-4 max-h-64 overflow-y-auto">
+              {editPauta.map((item, i) => (
+                <li key={i} className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs flex items-center justify-center shrink-0 font-medium">{i + 1}</span>
+                  <input
+                    value={item}
+                    onChange={e => setEditPauta(p => p.map((v, j) => j === i ? e.target.value : v))}
+                    className="flex-1 text-sm bg-transparent focus:outline-none text-slate-700"
+                  />
+                  <button onClick={() => setEditPauta(p => p.filter((_, j) => j !== i))}
+                    className="text-slate-300 hover:text-red-400 shrink-0">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            <div className="flex gap-2 mb-4">
+              <input
+                value={novoPautaItem}
+                onChange={e => setNovoPautaItem(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && novoPautaItem.trim()) {
+                    setEditPauta(p => [...p, novoPautaItem.trim()])
+                    setNovoPautaItem("")
+                  }
+                }}
+                placeholder="Novo item de pauta..."
+                className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400"
+              />
+              <button
+                onClick={() => { if (novoPautaItem.trim()) { setEditPauta(p => [...p, novoPautaItem.trim()]); setNovoPautaItem("") } }}
+                className="px-3 py-2 rounded-lg text-sm font-medium text-white"
+                style={{ background: "#006494" }}>
+                + Adicionar
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={() => setShowPautaModal(false)}
+                className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">Cancelar</button>
+              <button
+                onClick={() => {
+                  const updated = reunioes.map(r => r.id === reuniao.id ? { ...r, pauta: editPauta } : r)
+                  saveReunioes(updated); setReunioes(updated)
+                  setShowPautaModal(false)
+                }}
+                className="flex-1 px-3 py-2 text-sm rounded-lg text-white font-medium"
+                style={{ background: "#006494" }}>Salvar Pauta</button>
+            </div>
+          </div>
         </div>
       )}
 
