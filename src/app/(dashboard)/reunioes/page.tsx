@@ -408,7 +408,15 @@ export default function ReunioesPage() {
 
                 {!reuniao.ata && reuniao.criadoPor === userId && (
                   <Button variant="outline" className="w-full gap-2"
-                    onClick={() => { setAtaText(""); setShowAtaModal(true) }}>
+                    onClick={() => {
+                      const template = reuniao.pauta.length > 0
+                        ? reuniao.pauta.map((item, i) =>
+                            `<p><strong style="color:#006494">${i + 1}. ${item.toUpperCase()}</strong></p><ul style="list-style-type:disc;padding-left:1.5em;margin:4px 0"><li><br></li></ul><p><br></p>`
+                          ).join("")
+                        : ""
+                      setAtaText(template)
+                      setShowAtaModal(true)
+                    }}>
                     <FileText className="w-4 h-4" /> Registrar Ata
                   </Button>
                 )}
