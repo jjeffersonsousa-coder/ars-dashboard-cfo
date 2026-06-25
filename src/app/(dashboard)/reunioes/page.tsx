@@ -293,12 +293,46 @@ export default function ReunioesPage() {
                 </button>
               ))}
               <div className="w-px h-5 bg-slate-200 mx-1" />
-              <button title="Lista com marcadores" onMouseDown={e => { e.preventDefault(); execCmd("insertUnorderedList") }}
-                className="w-7 h-7 flex items-center justify-center rounded text-sm hover:bg-slate-200">
+              <button title="Lista com marcadores" onMouseDown={e => {
+                e.preventDefault()
+                editorRef.current?.focus()
+                const sel = window.getSelection()
+                if (sel && sel.rangeCount > 0) {
+                  const range = sel.getRangeAt(0)
+                  const ul = document.createElement("ul")
+                  ul.style.cssText = "list-style-type:disc;padding-left:1.5em;margin:4px 0"
+                  const li = document.createElement("li")
+                  li.innerHTML = "<br>"
+                  ul.appendChild(li)
+                  range.deleteContents()
+                  range.insertNode(ul)
+                  range.setStart(li, 0)
+                  range.collapse(true)
+                  sel.removeAllRanges()
+                  sel.addRange(range)
+                }
+              }} className="w-7 h-7 flex items-center justify-center rounded text-sm hover:bg-slate-200">
                 <span className="text-xs font-mono">• —</span>
               </button>
-              <button title="Lista numerada" onMouseDown={e => { e.preventDefault(); execCmd("insertOrderedList") }}
-                className="w-7 h-7 flex items-center justify-center rounded text-sm hover:bg-slate-200">
+              <button title="Lista numerada" onMouseDown={e => {
+                e.preventDefault()
+                editorRef.current?.focus()
+                const sel = window.getSelection()
+                if (sel && sel.rangeCount > 0) {
+                  const range = sel.getRangeAt(0)
+                  const ol = document.createElement("ol")
+                  ol.style.cssText = "list-style-type:decimal;padding-left:1.5em;margin:4px 0"
+                  const li = document.createElement("li")
+                  li.innerHTML = "<br>"
+                  ol.appendChild(li)
+                  range.deleteContents()
+                  range.insertNode(ol)
+                  range.setStart(li, 0)
+                  range.collapse(true)
+                  sel.removeAllRanges()
+                  sel.addRange(range)
+                }
+              }} className="w-7 h-7 flex items-center justify-center rounded text-sm hover:bg-slate-200">
                 <span className="text-xs font-mono">1.</span>
               </button>
               <div className="w-px h-5 bg-slate-200 mx-1" />
