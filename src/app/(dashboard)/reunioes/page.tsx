@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, CalendarDays, Users, FileText, X } from "lucide-react"
+import { Plus, CalendarDays, Users, FileText, X, Download } from "lucide-react"
 import { getSession } from "@/lib/auth"
 import { ORCAMENTO_2026 } from "@/data/orcamento-2026"
 
@@ -140,6 +140,139 @@ export default function ReunioesPage() {
     return DEPTOS.find(d => d.codigo === codigo)?.nome ?? codigo
   }
 
+  function exportAtaPDF(r: Reuniao) {
+    const dataFormatada = new Date(r.data + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
+    const pauta = r.pauta.map((item, i) => `<li style="margin-bottom:6px">${item}</li>`).join("")
+    const win = window.open("", "_blank")
+    if (!win) return
+    win.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Ata — ${r.titulo}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #1E293B; }
+  .page { max-width: 760px; margin: 0 auto; padding: 48px 56px; }
+
+  /* Header */
+  .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 20px; border-bottom: 3px solid #006494; margin-bottom: 32px; }
+  .logo-box { display: flex; align-items: center; gap: 12px; }
+  .logo-circle { width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg,#1B98E0,#006494); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 16px; }
+  .org-name { font-size: 13px; font-weight: 700; color: #13293D; line-height: 1.2; }
+  .org-sub { font-size: 11px; color: #64748B; margin-top: 2px; }
+  .doc-label { text-align: right; }
+  .doc-label-title { font-size: 11px; color: #64748B; text-transform: uppercase; letter-spacing: 1px; }
+  .doc-label-date { font-size: 13px; color: #006494; font-weight: 600; margin-top: 4px; }
+
+  /* Title block */
+  .title-block { background: linear-gradient(135deg, #13293D 0%, #006494 100%); border-radius: 12px; padding: 28px 32px; margin-bottom: 28px; color: #fff; }
+  .title-block h1 { font-size: 22px; font-weight: 800; margin-bottom: 10px; line-height: 1.3; }
+  .meta-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px; }
+  .meta-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(255,255,255,0.85); }
+  .meta-dot { width: 6px; height: 6px; border-radius: 50%; background: #1B98E0; flex-shrink: 0; }
+
+  /* Sections */
+  .section { margin-bottom: 28px; }
+  .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #E2E8F0; }
+  .section-badge { width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; }
+  .section-badge svg { width: 14px; height: 14px; fill: #006494; }
+  .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #006494; }
+
+  /* Pauta */
+  .pauta-list { list-style: none; padding: 0; }
+  .pauta-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 14px; border-radius: 8px; margin-bottom: 6px; background: #F8FAFC; border-left: 3px solid #1B98E0; }
+  .pauta-num { width: 22px; height: 22px; border-radius: 50%; background: #006494; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .pauta-text { font-size: 13px; color: #334155; line-height: 1.5; }
+
+  /* Ata */
+  .ata-box { background: #FAFBFF; border: 1px solid #E2E8F0; border-radius: 10px; padding: 24px 28px; font-size: 13px; line-height: 1.8; color: #334155; }
+  .ata-box ul { padding-left: 20px; margin: 8px 0; }
+  .ata-box ol { padding-left: 20px; margin: 8px 0; }
+  .ata-box li { margin-bottom: 4px; }
+  .ata-box strong { color: #13293D; }
+  .ata-box p { margin-bottom: 8px; }
+
+  /* Footer */
+  .footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; }
+  .footer-text { font-size: 11px; color: #94A3B8; }
+  .sign-area { text-align: center; }
+  .sign-line { width: 200px; border-top: 1px solid #64748B; margin: 0 auto 6px; }
+  .sign-label { font-size: 11px; color: #64748B; }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { padding: 32px 40px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="logo-box">
+      <div class="logo-circle">AR</div>
+      <div>
+        <div class="org-name">Associação Rio Sul da IASD</div>
+        <div class="org-sub">ARS Dashboard CFO</div>
+      </div>
+    </div>
+    <div class="doc-label">
+      <div class="doc-label-title">Ata de Reunião</div>
+      <div class="doc-label-date">${dataFormatada}</div>
+    </div>
+  </div>
+
+  <div class="title-block">
+    <h1>${r.titulo}</h1>
+    <div class="meta-grid">
+      <div class="meta-item"><span class="meta-dot"></span>${dataFormatada} às ${r.hora}</div>
+      ${r.local ? `<div class="meta-item"><span class="meta-dot"></span>${r.local}</div>` : ""}
+      ${r.departamento !== "geral" ? `<div class="meta-item"><span class="meta-dot"></span>${nomeDept(r.departamento)}</div>` : ""}
+      <div class="meta-item"><span class="meta-dot"></span>Registrado por: ${r.criadoPorNome}</div>
+    </div>
+  </div>
+
+  ${r.pauta.length > 0 ? `
+  <div class="section">
+    <div class="section-header">
+      <div class="section-badge">
+        <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      </div>
+      <span class="section-title">Pauta da Reunião</span>
+    </div>
+    <ul class="pauta-list">
+      ${r.pauta.map((item, i) => `
+      <li class="pauta-item">
+        <span class="pauta-num">${i + 1}</span>
+        <span class="pauta-text">${item}</span>
+      </li>`).join("")}
+    </ul>
+  </div>` : ""}
+
+  ${r.ata ? `
+  <div class="section">
+    <div class="section-header">
+      <div class="section-badge">
+        <svg viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+      </div>
+      <span class="section-title">Ata / Deliberações</span>
+    </div>
+    <div class="ata-box">${r.ata}</div>
+  </div>` : ""}
+
+  <div class="footer">
+    <div class="footer-text">Documento gerado em ${new Date().toLocaleDateString("pt-BR")} · ARS Dashboard CFO</div>
+    <div class="sign-area">
+      <div class="sign-line"></div>
+      <div class="sign-label">${r.criadoPorNome}</div>
+    </div>
+  </div>
+</div>
+<script>window.onload = () => { window.print() }<\/script>
+</body></html>`)
+    win.document.close()
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -210,7 +343,8 @@ export default function ReunioesPage() {
           {reuniao ? (
             <Card className="h-fit">
               <CardContent className="pt-5 space-y-4">
-                <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
                   <h3 className="font-bold text-slate-800 text-lg">{reuniao.titulo}</h3>
                   <p className="text-sm text-slate-500">
                     {new Date(reuniao.data + "T00:00:00").toLocaleDateString("pt-BR")} às {reuniao.hora}
@@ -218,6 +352,14 @@ export default function ReunioesPage() {
                   </p>
                   {reuniao.departamento !== "geral" && (
                     <p className="text-xs mt-0.5" style={{ color: "#006494" }}>{nomeDept(reuniao.departamento)}</p>
+                  )}
+                  </div>
+                  {reuniao.ata && (
+                    <button onClick={() => exportAtaPDF(reuniao)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white shrink-0"
+                      style={{ background: "#13293D" }}>
+                      <Download className="w-3.5 h-3.5" /> PDF
+                    </button>
                   )}
                 </div>
 
