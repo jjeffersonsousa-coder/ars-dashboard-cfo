@@ -842,10 +842,10 @@ export default function MakeABudgetPage() {
               <PanelLeftOpen className="w-4 h-4" style={{ color: "#64748B" }} />
             </button>
           )}
-          <div className="shrink-0 min-w-0">
+          <div className="min-w-0" style={{ flexShrink: 1, flexGrow: 0, maxWidth: 180 }}>
             <p className="text-sm font-bold leading-none" style={{ color: "#13293D" }}>Make a Budget</p>
-            <p className="text-xs mt-0.5 truncate" style={{ color: "#64748B", maxWidth: 260 }}>
-              {dept ? `${selectedDept !== TOTAL_DEPT_CODE ? `${selectedDept} — ` : ""}${dept.nome} · Fundo ${dept.fundo}` : "Selecione um departamento"}
+            <p className="text-xs mt-0.5 truncate" style={{ color: "#64748B" }}>
+              {dept ? `${selectedDept !== TOTAL_DEPT_CODE ? `${selectedDept} — ` : ""}${dept.nome}${dept.fundo && dept.fundo !== "__total__" ? ` · Fundo ${dept.fundo}` : ""}` : "Selecione um departamento"}
             </p>
           </div>
 
@@ -1345,7 +1345,7 @@ function ResumoOperacional({ ajustes, selectedMeses, nMeses }: {
   const subvRep = getVal("3193000")
   const subvLiq = subvRec - subvRep
 
-  const resultSemSubv = rec - desp
+  const resultSemSubv = rec + desp
   const resultComSubv = resultSemSubv + subvLiq
 
   const rows = [

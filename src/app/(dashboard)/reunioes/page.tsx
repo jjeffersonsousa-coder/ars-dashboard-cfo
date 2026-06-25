@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus, CalendarDays, Users, FileText, X } from "lucide-react"
@@ -79,6 +79,12 @@ export default function ReunioesPage() {
   const [nova, setNova] = useState<Partial<Reuniao>>({})
   const [showAtaModal, setShowAtaModal] = useState(false)
   const [ataText, setAtaText] = useState("")
+  const editorRef = useRef<HTMLDivElement>(null)
+
+  const execCmd = useCallback((cmd: string, value?: string) => {
+    document.execCommand(cmd, false, value)
+    editorRef.current?.focus()
+  }, [])
 
   useEffect(() => {
     const session = getSession()
@@ -233,8 +239,17 @@ export default function ReunioesPage() {
 
                 {reuniao.ata && (
                   <div>
-                    <h4 className="text-sm font-semibold text-slate-700 mb-2">Ata / Deliberações</h4>
-                    <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">{reuniao.ata}</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold text-slate-700">Ata / Deliberações</h4>
+                      {(reuniao.criadoPor === userId || nivel <= 2) && (
+                        <button className="text-xs text-blue-600 hover:underline"
+                          onClick={() => { setAtaText(reuniao.ata); setShowAtaModal(true) }}>
+                          Editar
+                        </button>
+                      )}
+                    </div>
+                    <div className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: reuniao.ata }} />
                   </div>
                 )}
 
@@ -254,28 +269,80 @@ export default function ReunioesPage() {
         </div>
       )}
 
-      {/* Modal Registrar Ata */}
+      {/* Modal Registrar/Editar Ata */}
       {showAtaModal && reuniao && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}>
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-slate-800">Registrar Ata</h3>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-bold text-slate-800">{reuniao.ata ? "Editar Ata" : "Registrar Ata"}</h3>
               <button onClick={() => setShowAtaModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
             </div>
             <p className="text-sm text-slate-500 mb-3">{reuniao.titulo} · {new Date(reuniao.data + "T00:00:00").toLocaleDateString("pt-BR")}</p>
-            <div>
-              <label className="text-xs font-medium text-slate-600 block mb-1">Ata / Deliberações *</label>
-              <textarea value={ataText} onChange={e => setAtaText(e.target.value)} rows={8}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400 resize-none"
-                placeholder="Registre aqui as decisões, deliberações e pontos discutidos na reunião..." />
+
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-0.5 border border-slate-200 rounded-t-lg px-2 py-1.5 bg-slate-50">
+              {[
+                { cmd: "bold", label: <strong>N</strong>, title: "Negrito (Ctrl+B)" },
+                { cmd: "italic", label: <em>I</em>, title: "Itálico (Ctrl+I)" },
+                { cmd: "underline", label: <u>S</u>, title: "Sublinhado (Ctrl+U)" },
+                { cmd: "strikeThrough", label: <s>R</s>, title: "Tachado" },
+              ].map(({ cmd, label, title }) => (
+                <button key={cmd} title={title} onMouseDown={e => { e.preventDefault(); execCmd(cmd) }}
+                  className="w-7 h-7 flex items-center justify-center rounded text-sm hover:bg-slate-200 transition-colors">
+                  {label}
+                </button>
+              ))}
+              <div className="w-px h-5 bg-slate-200 mx-1" />
+              <button title="Lista com marcadores" onMouseDown={e => { e.preventDefault(); execCmd("insertUnorderedList") }}
+                className="w-7 h-7 flex items-center justify-center rounded text-sm hover:bg-slate-200">
+                <span className="text-xs font-mono">• —</span>
+              </button>
+              <button title="Lista numerada" onMouseDown={e => { e.preventDefault(); execCmd("insertOrderedList") }}
+                className="w-7 h-7 flex items-center justify-center rounded text-sm hover:bg-slate-200">
+                <span className="text-xs font-mono">1.</span>
+              </button>
+              <div className="w-px h-5 bg-slate-200 mx-1" />
+              <button title="Alinhar à esquerda" onMouseDown={e => { e.preventDefault(); execCmd("justifyLeft") }}
+                className="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-200">
+                <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 fill-current"><rect x="1" y="2" width="14" height="1.5"/><rect x="1" y="6" width="9" height="1.5"/><rect x="1" y="10" width="12" height="1.5"/><rect x="1" y="14" width="7" height="1.5"/></svg>
+              </button>
+              <button title="Centralizar" onMouseDown={e => { e.preventDefault(); execCmd("justifyCenter") }}
+                className="w-7 h-7 flex items-center justify-center rounded hover:bg-slate-200">
+                <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 fill-current"><rect x="1" y="2" width="14" height="1.5"/><rect x="3.5" y="6" width="9" height="1.5"/><rect x="2" y="10" width="12" height="1.5"/><rect x="4.5" y="14" width="7" height="1.5"/></svg>
+              </button>
+              <div className="w-px h-5 bg-slate-200 mx-1" />
+              <select onMouseDown={e => e.stopPropagation()}
+                onChange={e => { execCmd("fontSize", e.target.value); e.target.value = "" }}
+                className="text-xs border border-slate-200 rounded px-1 py-0.5 bg-white text-slate-600 h-7">
+                <option value="">Tamanho</option>
+                <option value="2">Pequeno</option>
+                <option value="3">Normal</option>
+                <option value="4">Médio</option>
+                <option value="5">Grande</option>
+              </select>
             </div>
+
+            {/* Editor */}
+            <div
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              onInput={() => {}}
+              dangerouslySetInnerHTML={ataText ? { __html: ataText } : undefined}
+              className="w-full min-h-[220px] px-3 py-2 text-sm border border-t-0 border-slate-200 rounded-b-lg focus:outline-none focus:border-blue-400 overflow-y-auto"
+              style={{ maxHeight: 320 }}
+              data-placeholder="Registre aqui as decisões, deliberações e pontos discutidos na reunião..."
+            />
+            <style>{`[contenteditable]:empty:before{content:attr(data-placeholder);color:#94a3b8;pointer-events:none}`}</style>
+
             <div className="flex gap-2 mt-4">
               <button onClick={() => setShowAtaModal(false)}
                 className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">Cancelar</button>
               <button
                 onClick={() => {
-                  if (!ataText.trim()) return
-                  const updated = reunioes.map(r => r.id === reuniao.id ? { ...r, ata: ataText.trim(), status: "Concluída" as const } : r)
+                  const html = editorRef.current?.innerHTML ?? ""
+                  if (!html || html === "<br>") return
+                  const updated = reunioes.map(r => r.id === reuniao.id ? { ...r, ata: html, status: "Concluída" as const } : r)
                   saveReunioes(updated); setReunioes(updated)
                   setShowAtaModal(false)
                 }}
