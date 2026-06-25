@@ -571,6 +571,15 @@ export default function ReunioesPage() {
                 <option value="4">Médio</option>
                 <option value="5">Grande</option>
               </select>
+              <div className="w-px h-5 bg-slate-200 mx-1" />
+              {/* Cor do texto */}
+              <div className="flex items-center gap-1" title="Cor do texto">
+                {["#1E293B","#DC2626","#D97706","#16A34A","#006494","#7C3AED","#DB2777"].map(cor => (
+                  <button key={cor} onMouseDown={e => { e.preventDefault(); execCmd("foreColor", cor) }}
+                    className="w-4 h-4 rounded-sm border border-white shadow-sm hover:scale-110 transition-transform"
+                    style={{ background: cor }} title={cor} />
+                ))}
+              </div>
             </div>
 
             {/* Editor */}
