@@ -249,7 +249,13 @@ export default function PopPage() {
 
   useEffect(() => {
     const session = getSession()
-    setCanEdit((session?.nivel ?? 99) <= 2)
+    const nivel = session?.nivel ?? 99
+    const userId = session?.userId ?? ""
+    const viewOnly: Record<string, string[]> = (() => {
+      try { return JSON.parse(localStorage.getItem("ars_view_only") || "{}") } catch { return {} }
+    })()
+    const isViewOnly = (viewOnly[userId] ?? []).includes("/pop")
+    setCanEdit(nivel <= 2 && !isViewOnly)
     const extras = loadExtraPops()
     setAllPops([...mockData, ...extras])
   }, [])

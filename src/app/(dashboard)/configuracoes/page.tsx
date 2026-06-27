@@ -45,6 +45,15 @@ function saveRespMapLocal(m: Record<string, string[]>) {
 
 // ── Permissões (espelha sidebar.tsx) ─────────────────────────────────────────
 const PERMS_KEY = "ars_permissions"
+const VIEWONLY_KEY = "ars_view_only"
+
+function loadViewOnly(): Record<string, string[]> {
+  if (typeof window === "undefined") return {}
+  try { return JSON.parse(localStorage.getItem(VIEWONLY_KEY) || "{}") } catch { return {} }
+}
+function saveViewOnly(v: Record<string, string[]>) {
+  localStorage.setItem(VIEWONLY_KEY, JSON.stringify(v))
+}
 
 const ALL_NAV = [
   { href: "/dashboard",      label: "Dashboard" },
@@ -352,7 +361,35 @@ export default function ConfiguracoesPage() {
   const [busca, setBusca] = useState("")
   const [showCpf, setShowCpf] = useState<number | null>(null)
   const [perms, setPerms] = useState<Record<string, Record<string, boolean>>>({})
+  const [viewOnly, setViewOnly] = useState<Record<string, string[]>>({})
   const [respMap, setRespMap] = useState<Record<string, string[]>>({})
+
+  function permState(userId: string, route: string): "none" | "view" | "full" {
+    const up = perms[userId]
+    const hasAccess = !up || up[route] !== false
+    if (!hasAccess) return "none"
+    const vo = viewOnly[userId] ?? []
+    return vo.includes(route) ? "view" : "full"
+  }
+
+  function cyclePerm(userId: string, route: string) {
+    const cur = permState(userId, route)
+    if (cur === "none") {
+      // none → view
+      const p = { ...perms, [userId]: { ...(perms[userId] ?? {}), [route]: true } }
+      setPerms(p); savePerms(p)
+      const vo = { ...viewOnly, [userId]: [...(viewOnly[userId] ?? []).filter(r => r !== route), route] }
+      setViewOnly(vo); saveViewOnly(vo)
+    } else if (cur === "view") {
+      // view → full
+      const vo = { ...viewOnly, [userId]: (viewOnly[userId] ?? []).filter(r => r !== route) }
+      setViewOnly(vo); saveViewOnly(vo)
+    } else {
+      // full → none
+      const p = { ...perms, [userId]: { ...(perms[userId] ?? {}), [route]: false } }
+      setPerms(p); savePerms(p)
+    }
+  }
   const [editingCode, setEditingCode] = useState<string | null>(null)
   const [newResp, setNewResp] = useState("")
   const [claudeKey, setClaudeKey] = useState("")
@@ -370,6 +407,7 @@ export default function ConfiguracoesPage() {
 
   useEffect(() => {
     setPerms(loadPerms())
+    setViewOnly(loadViewOnly())
     const rm = loadRespMap()
     setRespMap(rm)
     const set = new Set([...RESPONSAVEIS_UNICOS, ...Object.values(rm).flat()])
@@ -772,18 +810,25 @@ export default function ConfiguracoesPage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                   </svg>
                                 </span>
-                              ) : (
-                                <button
-                                  onClick={() => togglePerm(userId, n.href)}
-                                  className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${hasPerm(userId, n.href) ? "" : "bg-slate-200"}`}
-                                  style={hasPerm(userId, n.href) ? { backgroundColor: "#1B98E0" } : {}}
-                                  title={hasPerm(userId, n.href) ? "Remover acesso" : "Conceder acesso"}
-                                >
-                                  <span
-                                    className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${hasPerm(userId, n.href) ? "left-5" : "left-0.5"}`}
-                                  />
-                                </button>
-                              )}
+                              ) : (() => {
+                                const state = permState(userId, n.href)
+                                return (
+                                  <button
+                                    onClick={() => cyclePerm(userId, n.href)}
+                                    title={state === "none" ? "Sem acesso — clique para leitura" : state === "view" ? "Leitura — clique para acesso completo" : "Acesso completo — clique para remover"}
+                                    className="w-10 h-5 rounded-full relative transition-colors duration-200"
+                                    style={{ backgroundColor: state === "none" ? "#E2E8F0" : state === "view" ? "#D97706" : "#1B98E0" }}
+                                  >
+                                    <span className={`absolute top-0.5 w-4 h-4 rounded-full shadow transition-all duration-200 flex items-center justify-center ${state === "none" ? "left-0.5 bg-white" : state === "view" ? "left-5 bg-white" : "left-5 bg-white"}`}>
+                                      {state === "view" && (
+                                        <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="none" stroke="#D97706" strokeWidth={2.5}>
+                                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                                        </svg>
+                                      )}
+                                    </span>
+                                  </button>
+                                )
+                              })()}
                             </td>
                           ))}
                           <td className="py-3 px-4 text-center">
