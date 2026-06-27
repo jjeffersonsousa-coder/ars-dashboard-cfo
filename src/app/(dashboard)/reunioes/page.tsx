@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Plus, CalendarDays, Users, FileText, X, Download } from "lucide-react"
 import { getSession } from "@/lib/auth"
 import { ORCAMENTO_2026 } from "@/data/orcamento-2026"
+import { USUARIOS_BASE } from "@/data/usuarios"
 
 const STORAGE_KEY = "ars_reunioes"
 
@@ -99,9 +100,13 @@ export default function ReunioesPage() {
 
   const podeVerTodas = nivel <= 2
 
-  const visiveis = reunioes.filter(r =>
-    podeVerTodas || verTodas ? true : r.criadoPor === userId
-  )
+  const visiveis = reunioes.filter(r => {
+    if (podeVerTodas) return true
+    if (r.criadoPor === userId) return true
+    if (r.participantes.includes(userId)) return true
+    if (r.departamento === "geral") return true
+    return false
+  })
 
   const reuniao = visiveis.find(r => r.id === selected)
 
@@ -232,6 +237,7 @@ export default function ReunioesPage() {
       ${r.local ? `<div class="meta-item"><span class="meta-dot"></span>${r.local}</div>` : ""}
       ${r.departamento !== "geral" ? `<div class="meta-item"><span class="meta-dot"></span>${nomeDept(r.departamento)}</div>` : ""}
       <div class="meta-item"><span class="meta-dot"></span>Registrado por: ${r.criadoPorNome}</div>
+      ${r.participantes.length > 0 ? `<div class="meta-item"><span class="meta-dot"></span>Participantes: ${r.participantes.map(pid => { const u = USUARIOS_BASE.find(u => u.id === pid); return u ? u.nome.split(" ").slice(0,2).join(" ") : pid }).join(", ")}</div>` : ""}
     </div>
   </div>
 
@@ -355,6 +361,20 @@ export default function ReunioesPage() {
                   </p>
                   {reuniao.departamento !== "geral" && (
                     <p className="text-xs mt-0.5" style={{ color: "#006494" }}>{nomeDept(reuniao.departamento)}</p>
+                  )}
+                  {reuniao.participantes.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {reuniao.participantes.map(pid => {
+                        const u = USUARIOS_BASE.find(u => u.id === pid)
+                        const nome = u ? u.nome.split(" ").slice(0,2).join(" ") : pid
+                        return (
+                          <span key={pid} className="px-2 py-0.5 rounded-full text-xs font-medium"
+                            style={{ background: "#EFF6FF", color: "#006494" }}>
+                            {nome}
+                          </span>
+                        )
+                      })}
+                    </div>
                   )}
                   </div>
                   {reuniao.ata && (
@@ -658,6 +678,30 @@ export default function ReunioesPage() {
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400">
                   {DEPTOS.map(d => <option key={d.codigo} value={d.codigo}>{d.nome}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Participantes</label>
+                <div className="border border-slate-200 rounded-lg max-h-36 overflow-y-auto divide-y divide-slate-100">
+                  {USUARIOS_BASE.filter(u => u.ativo && u.id !== userId).map(u => {
+                    const sel = (nova.participantes ?? []).includes(u.id)
+                    return (
+                      <label key={u.id} className={`flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-slate-50 ${sel ? "bg-blue-50" : ""}`}>
+                        <input type="checkbox" checked={sel}
+                          onChange={() => setNova(p => ({
+                            ...p,
+                            participantes: sel
+                              ? (p.participantes ?? []).filter(id => id !== u.id)
+                              : [...(p.participantes ?? []), u.id]
+                          }))}
+                          className="accent-blue-600" />
+                        <span className="text-sm text-slate-700">{u.nome}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+                {(nova.participantes ?? []).length > 0 && (
+                  <p className="text-xs text-slate-400 mt-1">{(nova.participantes ?? []).length} participante(s) selecionado(s)</p>
+                )}
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-600 block mb-1">Itens de pauta</label>
