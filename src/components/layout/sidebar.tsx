@@ -9,7 +9,7 @@ import { NIVEL_LABEL } from "@/data/usuarios"
 import {
   LayoutDashboard, DollarSign, HandCoins, Rocket,
   CalendarDays, CheckSquare, BookOpen, HelpCircle,
-  CalendarRange, Settings, BarChart3, LogOut,
+  CalendarRange, Settings, BarChart3, LogOut, Palmtree,
 } from "lucide-react"
 
 const ALL_NAV = [
@@ -21,6 +21,7 @@ const ALL_NAV = [
   { href: "/reunioes",       icon: CalendarDays,    label: "Reuniões",       color: "#E67E22" },
   { href: "/decisoes",       icon: CheckSquare,     label: "Decisões",       color: "#E74C3C" },
   { href: "/pop",            icon: BookOpen,        label: "POP",            color: "#F1C40F" },
+  { href: "/ferias",         icon: Palmtree,        label: "Controle de Férias", color: "#27AE60" },
   { href: "/eventos",        icon: CalendarRange,   label: "Eventos",        color: "#1ABC9C" },
   { href: "/help",           icon: HelpCircle,      label: "Help / Base IA", color: "#247BA0" },
 ]

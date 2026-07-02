@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, Rocket, Clock, CheckCircle2, XCircle, X, FileText, ListChecks } from "lucide-react"
+import { Plus, Rocket, Clock, CheckCircle2, XCircle, X, FileText, ListChecks, Pencil } from "lucide-react"
+import { getSession } from "@/lib/auth"
 
 interface Todo {
   id: string
@@ -51,10 +52,7 @@ function load(): Implementacao[] {
   if (typeof window === "undefined") return SEED
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      return parsed.map((i: Implementacao) => ({ ...i, todos: i.todos ?? [] }))
-    }
+    if (raw) return JSON.parse(raw).map((i: Implementacao) => ({ ...i, todos: i.todos ?? [] }))
   } catch { /* ignore */ }
   return SEED
 }
@@ -64,7 +62,7 @@ function save(list: Implementacao[]) {
 }
 
 function calcProgresso(todos: Todo[]): number {
-  if (todos.length === 0) return -1 // -1 = sem todos, usar manual
+  if (todos.length === 0) return -1
   return Math.round((todos.filter(t => t.feito).length / todos.length) * 100)
 }
 
@@ -73,32 +71,63 @@ export default function ImplementacoesPage() {
   const [filtro, setFiltro] = useState("Todos")
   const [selected, setSelected] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [editando, setEditando] = useState<Implementacao | null>(null)
   const [nova, setNova] = useState<Partial<Implementacao>>({})
   const [novoTodo, setNovoTodo] = useState("")
+  const [editTodoId, setEditTodoId] = useState<string | null>(null)
+  const [editTodoTexto, setEditTodoTexto] = useState("")
+  const [canEdit, setCanEdit] = useState(false)
   const statuses = ["Todos", "Em andamento", "Concluído", "Atrasado", "Planejado"]
 
-  useEffect(() => { setItems(load()) }, [])
+  useEffect(() => {
+    setItems(load())
+    const session = getSession()
+    const nivel = session?.nivel ?? 99
+    const userId = session?.userId ?? ""
+    const viewOnly: Record<string, string[]> = (() => {
+      try { return JSON.parse(localStorage.getItem("ars_view_only") || "{}") } catch { return {} }
+    })()
+    const isViewOnly = (viewOnly[userId] ?? []).includes("/implementacoes")
+    setCanEdit(nivel <= 2 && !isViewOnly)
+  }, [])
 
   const filtered = filtro === "Todos" ? items : items.filter(d => d.status === filtro)
   const detalhe = items.find(d => d.id === selected)
 
+  function openNova() {
+    setEditando(null)
+    setNova({ status: "Planejado", prioridade: "Média", progresso: 0, inicio: new Date().toISOString().slice(0, 10) })
+    setShowModal(true)
+  }
+
+  function openEditar(item: Implementacao) {
+    setEditando(item)
+    setNova({ ...item })
+    setShowModal(true)
+  }
+
   function handleSalvar() {
     if (!nova.titulo?.trim()) return
-    const item: Implementacao = {
-      id: `i${Date.now()}`,
-      titulo: nova.titulo ?? "",
-      responsavel: nova.responsavel ?? "",
-      inicio: nova.inicio ?? new Date().toISOString().slice(0, 10),
-      previsao: nova.previsao ?? "",
-      status: (nova.status as Implementacao["status"]) ?? "Planejado",
-      progresso: nova.progresso ?? 0,
-      prioridade: (nova.prioridade as Implementacao["prioridade"]) ?? "Média",
-      descricao: nova.descricao ?? "",
-      todos: [],
+    if (editando) {
+      const updated = items.map(i => i.id === editando.id ? { ...i, ...nova, todos: i.todos } as Implementacao : i)
+      save(updated); setItems(updated)
+    } else {
+      const item: Implementacao = {
+        id: `i${Date.now()}`,
+        titulo: nova.titulo ?? "",
+        responsavel: nova.responsavel ?? "",
+        inicio: nova.inicio ?? new Date().toISOString().slice(0, 10),
+        previsao: nova.previsao ?? "",
+        status: (nova.status as Implementacao["status"]) ?? "Planejado",
+        progresso: nova.progresso ?? 0,
+        prioridade: (nova.prioridade as Implementacao["prioridade"]) ?? "Média",
+        descricao: nova.descricao ?? "",
+        todos: [],
+      }
+      const updated = [item, ...items]
+      save(updated); setItems(updated)
     }
-    const updated = [item, ...items]
-    save(updated); setItems(updated)
-    setShowModal(false); setNova({})
+    setShowModal(false); setNova({}); setEditando(null)
   }
 
   function toggleTodo(implId: string, todoId: string) {
@@ -130,6 +159,16 @@ export default function ImplementacoesPage() {
     setNovoTodo("")
   }
 
+  function saveTodoEdit(implId: string, todoId: string, texto: string) {
+    if (!texto.trim()) return
+    const updated = items.map(item => {
+      if (item.id !== implId) return item
+      return { ...item, todos: item.todos.map(t => t.id === todoId ? { ...t, texto: texto.trim() } : t) }
+    })
+    save(updated); setItems(updated)
+    setEditTodoId(null)
+  }
+
   function removeTodo(implId: string, todoId: string) {
     const updated = items.map(item => {
       if (item.id !== implId) return item
@@ -153,15 +192,15 @@ export default function ImplementacoesPage() {
           <h2 className="text-2xl font-bold text-slate-800">Implementações</h2>
           <p className="text-slate-500 mt-1">Projetos e iniciativas em acompanhamento</p>
         </div>
-        <Button className="gap-2" style={{ backgroundColor: "#006494" }}
-          onClick={() => { setNova({ status: "Planejado", prioridade: "Média", progresso: 0, inicio: new Date().toISOString().slice(0, 10) }); setShowModal(true) }}>
-          <Plus className="w-4 h-4" />
-          Nova Implementação
-        </Button>
+        {canEdit && (
+          <Button className="gap-2" style={{ backgroundColor: "#006494" }} onClick={openNova}>
+            <Plus className="w-4 h-4" /> Nova Implementação
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        {statuses.map((s) => (
+        {statuses.map(s => (
           <button key={s} onClick={() => setFiltro(s)}
             className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${filtro === s ? "text-white border-transparent" : "border-slate-200 hover:border-blue-300"}`}
             style={filtro === s ? { backgroundColor: "#006494" } : {}}>
@@ -172,7 +211,7 @@ export default function ImplementacoesPage() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-3">
-          {filtered.map((item) => {
+          {filtered.map(item => {
             const prog = getProgresso(item)
             return (
               <Card key={item.id}
@@ -185,9 +224,7 @@ export default function ImplementacoesPage() {
                       <div className="flex items-center gap-2 mb-1">
                         {statusIcon[item.status]}
                         <h3 className="font-semibold text-slate-800">{item.titulo}</h3>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${prioridadeColor[item.prioridade]}`}>
-                          {item.prioridade}
-                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${prioridadeColor[item.prioridade]}`}>{item.prioridade}</span>
                       </div>
                       <p className="text-sm text-slate-500 mb-3">
                         Responsável: {item.responsavel} · Início: {new Date(item.inicio + "T00:00:00").toLocaleDateString("pt-BR")}
@@ -211,9 +248,7 @@ export default function ImplementacoesPage() {
                       item.status === "Em andamento" ? "bg-blue-100 text-blue-700" :
                       item.status === "Concluído" ? "bg-emerald-100 text-emerald-700" :
                       item.status === "Atrasado" ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-600"
-                    }`}>
-                      {item.status}
-                    </span>
+                    }`}>{item.status}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -243,7 +278,17 @@ export default function ImplementacoesPage() {
                   </div>
                   <h3 className="font-bold text-slate-800 text-base">{detalhe.titulo}</h3>
                 </div>
-                <button onClick={() => setSelected(null)}><X className="w-4 h-4 text-slate-400 hover:text-slate-600" /></button>
+                <div className="flex items-center gap-1">
+                  {canEdit && (
+                    <button onClick={() => openEditar(detalhe)}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="Editar implementação">
+                      <Pencil className="w-3.5 h-3.5 text-slate-400" />
+                    </button>
+                  )}
+                  <button onClick={() => setSelected(null)}>
+                    <X className="w-4 h-4 text-slate-400 hover:text-slate-600" />
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -260,7 +305,6 @@ export default function ImplementacoesPage() {
                 ))}
               </div>
 
-              {/* Barra de progresso */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-medium text-slate-500">Progresso geral</span>
@@ -272,9 +316,7 @@ export default function ImplementacoesPage() {
                   }`} style={{ width: `${getProgresso(detalhe)}%` }} />
                 </div>
                 {detalhe.todos.length > 0 && (
-                  <p className="text-xs text-slate-400 mt-1">
-                    {detalhe.todos.filter(t => t.feito).length} de {detalhe.todos.length} tarefas concluídas
-                  </p>
+                  <p className="text-xs text-slate-400 mt-1">{detalhe.todos.filter(t => t.feito).length} de {detalhe.todos.length} tarefas concluídas</p>
                 )}
               </div>
 
@@ -292,17 +334,16 @@ export default function ImplementacoesPage() {
                     <ListChecks className="w-4 h-4 text-blue-500" /> Tarefas
                   </h4>
                   {detalhe.todos.length > 0 && (
-                    <span className="text-xs text-slate-400">
-                      {detalhe.todos.filter(t => t.feito).length}/{detalhe.todos.length}
-                    </span>
+                    <span className="text-xs text-slate-400">{detalhe.todos.filter(t => t.feito).length}/{detalhe.todos.length}</span>
                   )}
                 </div>
 
                 {detalhe.todos.length > 0 && (
-                  <ul className="space-y-1.5 mb-3 max-h-48 overflow-y-auto">
+                  <ul className="space-y-1.5 mb-3 max-h-52 overflow-y-auto">
                     {detalhe.todos.map(todo => (
                       <li key={todo.id}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${todo.feito ? "bg-emerald-50 border-emerald-100" : "bg-slate-50 border-slate-100"}`}>
+                        {/* Checkbox — sempre clicável para marcar */}
                         <button onClick={() => toggleTodo(detalhe.id, todo.id)}
                           className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
                             todo.feito ? "border-emerald-500 bg-emerald-500" : "border-slate-300 hover:border-blue-400"
@@ -311,40 +352,65 @@ export default function ImplementacoesPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>}
                         </button>
-                        <span className={`flex-1 text-sm transition-all ${todo.feito ? "line-through text-slate-400" : "text-slate-700"}`}>
-                          {todo.texto}
-                        </span>
-                        <button onClick={() => removeTodo(detalhe.id, todo.id)}
-                          className="text-slate-300 hover:text-red-400 shrink-0 transition-colors">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+
+                        {/* Texto — editável inline se canEdit e clicado */}
+                        {canEdit && editTodoId === todo.id ? (
+                          <input
+                            autoFocus
+                            value={editTodoTexto}
+                            onChange={e => setEditTodoTexto(e.target.value)}
+                            onBlur={() => saveTodoEdit(detalhe.id, todo.id, editTodoTexto)}
+                            onKeyDown={e => {
+                              if (e.key === "Enter") saveTodoEdit(detalhe.id, todo.id, editTodoTexto)
+                              if (e.key === "Escape") setEditTodoId(null)
+                            }}
+                            className="flex-1 text-sm bg-white border border-blue-300 rounded px-2 py-0.5 focus:outline-none"
+                          />
+                        ) : (
+                          <span
+                            className={`flex-1 text-sm transition-all ${todo.feito ? "line-through text-slate-400" : "text-slate-700"} ${canEdit ? "cursor-text hover:text-blue-600" : ""}`}
+                            onClick={() => { if (canEdit) { setEditTodoId(todo.id); setEditTodoTexto(todo.texto) } }}>
+                            {todo.texto}
+                          </span>
+                        )}
+
+                        {canEdit && (
+                          <button onClick={() => removeTodo(detalhe.id, todo.id)}
+                            className="text-slate-300 hover:text-red-400 shrink-0 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>
                 )}
 
                 {detalhe.todos.length === 0 && (
-                  <p className="text-xs text-slate-400 italic mb-2">Nenhuma tarefa ainda. Adicione abaixo.</p>
+                  <p className="text-xs text-slate-400 italic mb-2">
+                    {canEdit ? "Nenhuma tarefa ainda. Adicione abaixo." : "Nenhuma tarefa cadastrada."}
+                  </p>
                 )}
 
-                <div className="flex gap-2">
-                  <input
-                    value={novoTodo}
-                    onChange={e => setNovoTodo(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") addTodo(detalhe.id, novoTodo) }}
-                    placeholder="Nova tarefa..."
-                    className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400"
-                  />
-                  <button onClick={() => addTodo(detalhe.id, novoTodo)}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium text-white shrink-0"
-                    style={{ background: "#006494" }}>
-                    + Add
-                  </button>
-                </div>
+                {canEdit && (
+                  <div className="flex gap-2">
+                    <input
+                      value={novoTodo}
+                      onChange={e => setNovoTodo(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") addTodo(detalhe.id, novoTodo) }}
+                      placeholder="Nova tarefa..."
+                      className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400"
+                    />
+                    <button onClick={() => addTodo(detalhe.id, novoTodo)}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium text-white shrink-0"
+                      style={{ background: "#006494" }}>
+                      + Add
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Ações manuais — só aparecem quando não há todos */}
-              {detalhe.todos.length === 0 && (
+              {/* Ações manuais — só sem todos e com permissão */}
+              {canEdit && detalhe.todos.length === 0 && (
                 <div className="flex gap-2 pt-1">
                   {detalhe.progresso < 100 && (
                     <Button size="sm" variant="outline" className="flex-1"
@@ -353,9 +419,7 @@ export default function ImplementacoesPage() {
                         const st: Implementacao["status"] = np === 100 ? "Concluído" : detalhe.status === "Planejado" ? "Em andamento" : detalhe.status
                         const updated = items.map(i => i.id === detalhe.id ? { ...i, progresso: np, status: st } : i)
                         save(updated); setItems(updated)
-                      }}>
-                      +10% Progresso
-                    </Button>
+                      }}>+10% Progresso</Button>
                   )}
                   {detalhe.status !== "Concluído" && (
                     <Button size="sm" className="flex-1" style={{ backgroundColor: "#006494" }}
@@ -377,12 +441,13 @@ export default function ImplementacoesPage() {
         )}
       </div>
 
+      {/* Modal Nova / Editar */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}>
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-slate-800">Nova Implementação</h3>
-              <button onClick={() => setShowModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
+              <h3 className="font-bold text-slate-800">{editando ? "Editar Implementação" : "Nova Implementação"}</h3>
+              <button onClick={() => { setShowModal(false); setEditando(null) }}><X className="w-4 h-4 text-slate-400" /></button>
             </div>
             <div className="space-y-3">
               <div>
@@ -430,11 +495,11 @@ export default function ImplementacoesPage() {
               </div>
             </div>
             <div className="flex gap-2 mt-5">
-              <button onClick={() => setShowModal(false)}
+              <button onClick={() => { setShowModal(false); setEditando(null) }}
                 className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">Cancelar</button>
               <button onClick={handleSalvar}
                 className="flex-1 px-3 py-2 text-sm rounded-lg text-white font-medium"
-                style={{ background: "#006494" }}>Salvar</button>
+                style={{ background: "#006494" }}>{editando ? "Salvar alterações" : "Salvar"}</button>
             </div>
           </div>
         </div>
