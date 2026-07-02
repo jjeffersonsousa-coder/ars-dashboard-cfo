@@ -394,7 +394,9 @@ export default function FeriasPage() {
   }
 
   return (
-    <div style={{ padding: 32, maxWidth: 1400, margin: "0 auto" }}>
+    <div style={{ display: "flex", height: "calc(100vh - 64px)", overflow: "hidden" }}>
+    {/* ── Coluna esquerda (conteúdo principal) ── */}
+    <div style={{ flex: 1, minWidth: 0, overflowY: "auto", padding: 32, transition: "all .25s" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
         <Palmtree size={28} style={{ color: "#27AE60" }} />
@@ -534,7 +536,9 @@ export default function FeriasPage() {
         )}
       </div>
 
-      {/* ── Painel de Detalhe ── */}
+    </div>{/* fim coluna esquerda */}
+
+      {/* ── Painel de Detalhe (coluna direita) ── */}
       {detalhe && (() => {
         const rc = resolve(detalhe)
         const lic = getLicenca(detalhe.id)
@@ -544,9 +548,8 @@ export default function FeriasPage() {
         const stColor = lic ? "#8E44AD" : (statusColor[st] ?? "#95A5A6")
         const stLabel = lic ? "Licença Médica" : (statusLabel[st] ?? "—")
         return (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 200, display: "flex", alignItems: "flex-start", justifyContent: "flex-end" }}
-            onClick={e => { if (e.target === e.currentTarget) { setDetalhe(null); setShowNeg(false); setShowLicenca(false); setShowOverride(false) } }}>
-            <div style={{ width: 520, height: "100vh", overflowY: "auto", background: "var(--card-bg)", boxShadow: "-8px 0 32px rgba(0,0,0,.2)", padding: 28, display: "flex", flexDirection: "column", gap: 20 }}>
+          <div style={{ width: 480, flexShrink: 0, borderLeft: "1px solid var(--border)", background: "var(--card-bg, #fff)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 18, flex: 1 }}>
 
               {/* Header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -837,3 +840,4 @@ export default function FeriasPage() {
     </div>
   )
 }
+
