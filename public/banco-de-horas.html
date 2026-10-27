@@ -1077,8 +1077,12 @@ function renderReport(list) {
 
 /* ---------- exportar PDF / JPG ---------- */
 const EXP_W = 1200, PAGE_H = 1738; // largura do layout (px) e altura útil de uma página A4 nessa escala
-let downloadsApi = null;
-(async () => { try { downloadsApi = (window.claude && await window.claude.use("downloads")) || null; } catch (e) { downloadsApi = null; } })();
+function browserSave(filename, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+}
 function keepFocus() { const t = document.getElementById("obs-ta"); if (t && document.activeElement !== t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }
 const docId = n => slug(n).slice(0, 150) || "x";
 $("report").addEventListener("click", async ev => {
@@ -1093,7 +1097,6 @@ $("report").addEventListener("click", async ev => {
   }
 });
 $("report").addEventListener("input", ev => { if (ev.target.id === "obs-ta") state.draft = ev.target.value; });
-async function ensureDl() { if (downloadsApi) return downloadsApi; try { downloadsApi = (window.claude && await window.claude.use("downloads")) || null; } catch (e) { downloadsApi = null; } return downloadsApi; }
 
 const slug = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "");
 function fileBase() {
@@ -1191,7 +1194,7 @@ async function exportPdf(base) {
     pg.forEach(s => doc.addImage(crop(s).toDataURL("image/jpeg", .88), "JPEG", 8, 8 + s.y * k, 194, s.sh * k));
     doc.setFontSize(8); doc.setTextColor(127, 147, 163); doc.text(`${i + 1} / ${pages.length}`, 105, 292, { align: "center" });
   });
-  await downloadsApi.save({ filename: base + ".pdf", data: doc.output("blob") });
+  browserSave(base + ".pdf", doc.output("blob"));
   return `PDF com ${pages.length} página(s)`;
 }
 async function exportJpg(base) {
@@ -1200,17 +1203,16 @@ async function exportJpg(base) {
   const H = full.offsetHeight, ratio = Math.min(2, 16000 / H);
   if (ratio >= 1.2) {
     const c = await shoot(full, ratio);
-    await downloadsApi.save({ filename: base + ".jpg", data: await toBlob(c, .92) });
+    browserSave(base + ".jpg", await toBlob(c, .92));
     return "JPG";
   }
   const pages = paginate(await buildBlocks(1.5));
   for (let i = 0; i < pages.length; i++) {
-    await downloadsApi.save({ filename: `${base}_parte-${i + 1}-de-${pages.length}.jpg`, data: await toBlob(pageCanvas(pages[i], 1.5), .9) });
+    browserSave(`${base}_parte-${i + 1}-de-${pages.length}.jpg`, await toBlob(pageCanvas(pages[i], 1.5), .9));
   }
   return `JPG em ${pages.length} partes`;
 }
 async function runExport(kind) {
-  if (!(await ensureDl())) { say("Exportar não está disponível nesta visualização. Abra o link no claude.ai com sua conta."); return; }
   if (!window.htmlToImage || (kind === "pdf" && !window.jspdf)) { say("Não foi possível carregar o gerador de arquivos."); return; }
   const root = document.documentElement, prev = root.getAttribute("data-theme");
   $("xov-t").textContent = kind === "pdf" ? "Gerando PDF…" : "Gerando JPG…"; $("xov").hidden = false;
