@@ -9,7 +9,8 @@ import { NIVEL_LABEL } from "@/data/usuarios"
 import {
   LayoutDashboard, DollarSign, HandCoins, Rocket,
   CalendarDays, CheckSquare, BookOpen, HelpCircle,
-  CalendarRange, Settings, BarChart3, LogOut, Palmtree,
+  CalendarRange, Settings, BarChart3, LogOut, Palmtree, Clock,
+  Building2, ChevronDown, ChevronRight, Users,
 } from "lucide-react"
 
 const ALL_NAV = [
@@ -26,6 +27,17 @@ const ALL_NAV = [
   { href: "/help",           icon: HelpCircle,      label: "Help / Base IA", color: "#247BA0" },
 ]
 
+const DEPT_NAV = [
+  {
+    label: "Departamento Pessoal",
+    icon: Users,
+    color: "#E74C3C",
+    items: [
+      { href: "/departamentos/banco-de-horas", icon: Clock, label: "Banco de Horas", color: "#E74C3C" },
+    ],
+  },
+]
+
 const BOTTOM_NAV = [
   { href: "/configuracoes", icon: Settings, label: "Configurações", color: "#95A5A6" },
 ]
@@ -34,6 +46,7 @@ export function Sidebar({ open }: { open: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
+  const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({ "Departamento Pessoal": true })
 
   useEffect(() => {
     setSession(getSession())
@@ -98,6 +111,42 @@ export function Sidebar({ open }: { open: boolean }) {
       {/* Nav */}
       <nav className="flex-1 py-4 space-y-0.5 px-2 overflow-y-auto">
         {visibleNav.map(item => <NavLink key={item.href} {...item} />)}
+
+        {/* Departamentos */}
+        {open && (
+          <div className="mt-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 cursor-pointer select-none"
+              onClick={() => setExpandedDepts(prev => ({ ...prev, __dept__: !prev.__dept__ }))}
+            >
+              <Building2 className="w-3.5 h-3.5 shrink-0" style={{ color: "#7F8C8D" }} />
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#7F8C8D" }}>Departamentos</span>
+              {expandedDepts.__dept__ === false
+                ? <ChevronRight className="w-3 h-3 ml-auto" style={{ color: "#7F8C8D" }} />
+                : <ChevronDown className="w-3 h-3 ml-auto" style={{ color: "#7F8C8D" }} />}
+            </div>
+
+            {expandedDepts.__dept__ !== false && DEPT_NAV.map(dept => (
+              <div key={dept.label}>
+                <div
+                  className="flex items-center gap-2 px-3 py-1.5 ml-2 cursor-pointer select-none"
+                  onClick={() => setExpandedDepts(prev => ({ ...prev, [dept.label]: !prev[dept.label] }))}
+                >
+                  <dept.icon className="w-3.5 h-3.5 shrink-0" style={{ color: dept.color }} />
+                  <span className="text-xs font-medium" style={{ color: "#AAB7B8" }}>{dept.label}</span>
+                  {expandedDepts[dept.label] === false
+                    ? <ChevronRight className="w-3 h-3 ml-auto" style={{ color: "#7F8C8D" }} />
+                    : <ChevronDown className="w-3 h-3 ml-auto" style={{ color: "#7F8C8D" }} />}
+                </div>
+
+                {expandedDepts[dept.label] !== false && dept.items.map(item => (
+                  <div key={item.href} className="ml-4">
+                    <NavLink {...item} />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
       </nav>
 
       {/* Bottom */}
