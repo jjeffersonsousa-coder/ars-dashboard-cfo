@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, BookOpen, Edit2, Clock, CheckCircle2, AlertTriangle, Building2, Lock, X } from "lucide-react"
+import { Plus, BookOpen, Edit2, Clock, CheckCircle2, AlertTriangle, Building2, Lock, X, Upload, FileText, Trash2, StickyNote } from "lucide-react"
 import { getSession } from "@/lib/auth"
 
 const POP_STORAGE_KEY = "ars_pops_extra"
+const POP_PDF_KEY = "ars_pop_pdfs"
+const POP_NOTES_KEY = "ars_pop_notes"
 
 function loadExtraPops(): Pop[] {
   if (typeof window === "undefined") return []
@@ -19,6 +21,24 @@ function loadExtraPops(): Pop[] {
 
 function saveExtraPops(pops: Pop[]) {
   localStorage.setItem(POP_STORAGE_KEY, JSON.stringify(pops))
+}
+
+function loadPdfs(): Record<number, string> {
+  if (typeof window === "undefined") return {}
+  try { return JSON.parse(localStorage.getItem(POP_PDF_KEY) || "{}") } catch { return {} }
+}
+
+function savePdfs(p: Record<number, string>) {
+  localStorage.setItem(POP_PDF_KEY, JSON.stringify(p))
+}
+
+function loadNotes(): Record<number, string> {
+  if (typeof window === "undefined") return {}
+  try { return JSON.parse(localStorage.getItem(POP_NOTES_KEY) || "{}") } catch { return {} }
+}
+
+function saveNotes(n: Record<number, string>) {
+  localStorage.setItem(POP_NOTES_KEY, JSON.stringify(n))
 }
 
 interface Pop {
@@ -246,6 +266,10 @@ export default function PopPage() {
   const [allPops, setAllPops] = useState<Pop[]>([])
   const [showModal, setShowModal] = useState(false)
   const [novo, setNovo] = useState<Partial<NovoPop>>({})
+  const [pdfs, setPdfs] = useState<Record<number, string>>({})
+  const [notes, setNotes] = useState<Record<number, string>>({})
+  const [noteDraft, setNoteDraft] = useState("")
+  const [showPdf, setShowPdf] = useState(false)
 
   useEffect(() => {
     const session = getSession()
@@ -258,7 +282,41 @@ export default function PopPage() {
     setCanEdit(nivel <= 2 && !isViewOnly)
     const extras = loadExtraPops()
     setAllPops([...mockData, ...extras])
+    setPdfs(loadPdfs())
+    setNotes(loadNotes())
   }, [])
+
+  useEffect(() => {
+    if (selected !== null) {
+      setNoteDraft(notes[selected] ?? "")
+      setShowPdf(false)
+    }
+  }, [selected])
+
+  function handlePdfUpload(popId: number, file: File) {
+    const reader = new FileReader()
+    reader.onload = e => {
+      const b64 = e.target?.result as string
+      const updated = { ...pdfs, [popId]: b64 }
+      setPdfs(updated)
+      savePdfs(updated)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function handleRemovePdf(popId: number) {
+    const updated = { ...pdfs }
+    delete updated[popId]
+    setPdfs(updated)
+    savePdfs(updated)
+    setShowPdf(false)
+  }
+
+  function handleSaveNote(popId: number) {
+    const updated = { ...notes, [popId]: noteDraft }
+    setNotes(updated)
+    saveNotes(updated)
+  }
 
   function handleSalvarPop() {
     if (!novo.titulo?.trim()) return
@@ -447,10 +505,70 @@ export default function PopPage() {
                 ))}
               </div>
 
+              {/* PDF section */}
               <div>
-                <h4 className="text-sm font-semibold text-slate-700 mb-1.5">Descrição</h4>
-                <p className="text-sm text-slate-600 rounded-lg p-3" style={{ backgroundColor: "#E8F1F2" }}>{pop.descricao}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4" style={{ color: "#E74C3C" }} /> Documento PDF
+                  </h4>
+                  <div className="flex gap-1.5">
+                    {pdfs[pop.id] && (
+                      <>
+                        <button
+                          onClick={() => setShowPdf(v => !v)}
+                          className="px-2.5 py-1 text-xs font-medium rounded-lg text-white transition-colors"
+                          style={{ backgroundColor: showPdf ? "#64748B" : "#006494" }}>
+                          {showPdf ? "Ocultar" : "Abrir PDF"}
+                        </button>
+                        <button
+                          onClick={() => handleRemovePdf(pop.id)}
+                          className="p-1 rounded-lg hover:bg-red-50" title="Remover PDF">
+                          <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
+                        </button>
+                      </>
+                    )}
+                    <label className="px-2.5 py-1 text-xs font-medium rounded-lg cursor-pointer transition-colors"
+                      style={{ backgroundColor: "#E8F1F2", color: "#006494" }}>
+                      <Upload className="w-3 h-3 inline mr-1" />
+                      {pdfs[pop.id] ? "Trocar" : "Importar PDF"}
+                      <input type="file" accept="application/pdf" className="hidden"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) handlePdfUpload(pop.id, f); e.target.value = "" }} />
+                    </label>
+                  </div>
+                </div>
+                {pdfs[pop.id] ? (
+                  showPdf ? (
+                    <div className="rounded-xl overflow-hidden border border-slate-200">
+                      <iframe
+                        src={pdfs[pop.id]}
+                        className="w-full"
+                        style={{ height: "520px", border: "none" }}
+                        title={`PDF — ${pop.titulo}`}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ backgroundColor: "#E8F1F2" }}>
+                      <FileText className="w-5 h-5 shrink-0" style={{ color: "#E74C3C" }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-700">PDF anexado</p>
+                        <p className="text-xs text-slate-400">Clique em "Abrir PDF" para visualizar</p>
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 border-dashed border-slate-200 text-slate-400 text-xs">
+                    <Upload className="w-4 h-4 shrink-0" />
+                    Nenhum PDF importado — clique em "Importar PDF" para anexar
+                  </div>
+                )}
               </div>
+
+              {pop.descricao && (
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-1.5">Descrição</h4>
+                  <p className="text-sm text-slate-600 rounded-lg p-3" style={{ backgroundColor: "#E8F1F2" }}>{pop.descricao}</p>
+                </div>
+              )}
 
               {pop.conteudo && (
                 <div>
@@ -461,11 +579,29 @@ export default function PopPage() {
                 </div>
               )}
 
-              {!pop.conteudo && canEdit && (
-                <div className="pt-2 border-t">
-                  <p className="text-sm text-slate-400 italic">Clique em "Editar" para adicionar os passos detalhados do procedimento.</p>
+              {/* Anotações */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                  <StickyNote className="w-4 h-4 text-amber-500" /> Anotações
+                </h4>
+                <textarea
+                  value={noteDraft}
+                  onChange={e => setNoteDraft(e.target.value)}
+                  rows={3}
+                  placeholder="Adicione observações, dúvidas ou lembretes sobre este POP..."
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-amber-400 resize-none"
+                  style={{ backgroundColor: noteDraft ? "#FFFBEB" : undefined }}
+                />
+                <div className="flex justify-end mt-1.5">
+                  <button
+                    onClick={() => handleSaveNote(pop.id)}
+                    disabled={noteDraft === (notes[pop.id] ?? "")}
+                    className="px-3 py-1 text-xs font-medium rounded-lg text-white disabled:opacity-40 transition-opacity"
+                    style={{ backgroundColor: "#F59E0B" }}>
+                    Salvar anotação
+                  </button>
                 </div>
-              )}
+              </div>
             </CardContent>
           </Card>
         ) : (
