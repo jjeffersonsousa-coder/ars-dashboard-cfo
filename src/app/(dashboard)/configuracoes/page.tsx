@@ -900,6 +900,11 @@ export default function ConfiguracoesPage() {
               { href: "/help", label: "Help / Base IA" },
               { href: "/configuracoes", label: "Configurações" },
             ]
+            const DEPT_MENUS = [
+              { group: "Departamento Pessoal", items: [
+                { href: "/departamentos/banco-de-horas", label: "Banco de Horas" },
+              ]},
+            ]
             return (
               <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}>
                 <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -958,6 +963,37 @@ export default function ConfiguracoesPage() {
                             </button>
                           )
                         })}
+                      </div>
+
+                      {/* Departamentos */}
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="h-px flex-1" style={{ background: "#E2E8F0" }} />
+                          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#94A3B8" }}>Departamentos</span>
+                          <div className="h-px flex-1" style={{ background: "#E2E8F0" }} />
+                        </div>
+                        {DEPT_MENUS.map(dept => (
+                          <div key={dept.group} className="mb-2">
+                            <p className="text-xs font-medium mb-1.5" style={{ color: "#E74C3C" }}>{dept.group}</p>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {dept.items.map(m => {
+                                const active = (u.menus ?? []).includes(m.href)
+                                return (
+                                  <button key={m.href} type="button"
+                                    onClick={() => updateU({ menus: toggleMenu(u, m.href) })}
+                                    className="text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2 border transition-all"
+                                    style={{ borderColor: active ? "#E74C3C" : "#E2E8F0", background: active ? "#FEF2F2" : "#F8FAFC", color: active ? "#E74C3C" : "#64748B", fontWeight: active ? 600 : 400 }}>
+                                    <span className="w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center"
+                                      style={{ borderColor: active ? "#E74C3C" : "#CBD5E1", background: active ? "#E74C3C" : "transparent" }}>
+                                      {active && <span className="text-white text-xs leading-none">✓</span>}
+                                    </span>
+                                    {m.label}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
