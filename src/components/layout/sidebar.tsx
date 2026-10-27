@@ -46,7 +46,7 @@ export function Sidebar({ open }: { open: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
-  const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({ "Departamento Pessoal": true })
+  const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     setSession(getSession())
@@ -113,38 +113,42 @@ export function Sidebar({ open }: { open: boolean }) {
         {visibleNav.map(item => <NavLink key={item.href} {...item} />)}
 
         {/* Departamentos */}
-        {open && (
+        {open && DEPT_NAV.some(dept => dept.items.some(item => canAccess(item.href))) && (
           <div className="mt-3">
             <div className="flex items-center gap-2 px-3 py-1.5 cursor-pointer select-none"
               onClick={() => setExpandedDepts(prev => ({ ...prev, __dept__: !prev.__dept__ }))}
             >
               <Building2 className="w-3.5 h-3.5 shrink-0" style={{ color: "#7F8C8D" }} />
               <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#7F8C8D" }}>Departamentos</span>
-              {expandedDepts.__dept__ === false
-                ? <ChevronRight className="w-3 h-3 ml-auto" style={{ color: "#7F8C8D" }} />
-                : <ChevronDown className="w-3 h-3 ml-auto" style={{ color: "#7F8C8D" }} />}
+              {expandedDepts.__dept__
+                ? <ChevronDown className="w-3 h-3 ml-auto" style={{ color: "#7F8C8D" }} />
+                : <ChevronRight className="w-3 h-3 ml-auto" style={{ color: "#7F8C8D" }} />}
             </div>
 
-            {expandedDepts.__dept__ !== false && DEPT_NAV.map(dept => (
-              <div key={dept.label}>
-                <div
-                  className="flex items-center gap-2 px-3 py-1.5 ml-2 cursor-pointer select-none"
-                  onClick={() => setExpandedDepts(prev => ({ ...prev, [dept.label]: !prev[dept.label] }))}
-                >
-                  <dept.icon className="w-3.5 h-3.5 shrink-0" style={{ color: dept.color }} />
-                  <span className="text-xs font-medium" style={{ color: "#AAB7B8" }}>{dept.label}</span>
-                  {expandedDepts[dept.label] === false
-                    ? <ChevronRight className="w-3 h-3 ml-auto" style={{ color: "#7F8C8D" }} />
-                    : <ChevronDown className="w-3 h-3 ml-auto" style={{ color: "#7F8C8D" }} />}
-                </div>
-
-                {expandedDepts[dept.label] !== false && dept.items.map(item => (
-                  <div key={item.href} className="ml-4">
-                    <NavLink {...item} />
+            {expandedDepts.__dept__ && DEPT_NAV.map(dept => {
+              const visibleItems = dept.items.filter(item => canAccess(item.href))
+              if (!visibleItems.length) return null
+              return (
+                <div key={dept.label}>
+                  <div
+                    className="flex items-center gap-2 px-3 py-1.5 ml-2 cursor-pointer select-none"
+                    onClick={() => setExpandedDepts(prev => ({ ...prev, [dept.label]: !prev[dept.label] }))}
+                  >
+                    <dept.icon className="w-3.5 h-3.5 shrink-0" style={{ color: dept.color }} />
+                    <span className="text-xs font-medium" style={{ color: "#AAB7B8" }}>{dept.label}</span>
+                    {expandedDepts[dept.label]
+                      ? <ChevronDown className="w-3 h-3 ml-auto" style={{ color: "#7F8C8D" }} />
+                      : <ChevronRight className="w-3 h-3 ml-auto" style={{ color: "#7F8C8D" }} />}
                   </div>
-                ))}
-              </div>
-            ))}
+
+                  {expandedDepts[dept.label] && visibleItems.map(item => (
+                    <div key={item.href} className="ml-4">
+                      <NavLink {...item} />
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
           </div>
         )}
       </nav>

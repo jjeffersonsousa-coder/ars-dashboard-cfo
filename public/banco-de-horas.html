@@ -461,6 +461,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
     <button class="dk" type="button" data-go="linhas">Análise Gráfico em Linhas</button>
     <button class="dk" type="button" data-go="relatorio">Relatório por Nome</button>
     <button class="dk" type="button" data-go="licencas">Férias e Licenças</button>
+    <button class="dk" type="button" id="imp-btn">⬆ Importar</button>
     <span class="xwrap" id="xwrap">
       <button class="dk xbtn" id="xbtn" type="button" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 2v8m0 0L5 7m3 3 3-3M3 13h10" style="fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round"/></svg>Exportar</button>
       <div class="xmenu" id="xmenu" hidden>
@@ -606,6 +607,74 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+#imp-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center}
+#imp-modal{background:#fff;border-radius:12px;padding:28px;max-width:600px;width:calc(100% - 32px);max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.25)}
+#imp-modal h3{margin:0 0 16px;font-size:17px}
+#imp-modal .imp-row{display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+#imp-modal label{font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:4px}
+#imp-modal select,#imp-modal input[type=text]{padding:7px 10px;border:1px solid #ddd;border-radius:7px;font-size:13px;width:100%}
+#imp-modal .imp-file-area{border:2px dashed #1B98E0;border-radius:8px;padding:24px;text-align:center;cursor:pointer;margin-bottom:14px;color:#1B98E0;font-size:13px}
+#imp-modal .imp-file-area:hover{background:#f0f8ff}
+#imp-modal .imp-preview{font-size:12px;max-height:200px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:8px}
+#imp-modal .imp-preview table{border-collapse:collapse;width:100%}
+#imp-modal .imp-preview th,#imp-modal .imp-preview td{border:1px solid #eee;padding:3px 7px;text-align:left;font-size:11px}
+#imp-modal .imp-preview th{background:#f8f9fa}
+#imp-modal .imp-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+#imp-modal .imp-btn{padding:8px 18px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600}
+#imp-modal .imp-btn.pri{background:#1B98E0;color:#fff}
+#imp-modal .imp-btn.sec{background:#f0f0f0;color:#333}
+#imp-modal .imp-note{font-size:12px;color:#888;margin-top:8px}
+#imp-modal .imp-warn{background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:8px 12px;font-size:12px;color:#7a6200;margin-bottom:10px}
+</style>
+<div id="imp-modal-bg" hidden>
+  <div id="imp-modal">
+    <h3>⬆ Importar dados do Excel</h3>
+    <div class="imp-warn">O arquivo deve conter colunas: <b>Nome</b> (ou Funcionário), <b>Saldo</b> (em minutos, ex: <code>*_min</code>) para o mês selecionado. O sistema tenta detectar automaticamente as colunas.</div>
+    <div class="imp-row">
+      <div style="flex:1">
+        <label>Tipo de importação</label>
+        <select id="imp-tipo">
+          <option value="atual">Atualizar mês atual (substitui dados parciais do mês corrente)</option>
+          <option value="novo">Adicionar novo mês fechado</option>
+        </select>
+      </div>
+    </div>
+    <div class="imp-row" id="imp-mes-wrap">
+      <div style="flex:1">
+        <label>Qual mês está sendo importado?</label>
+        <select id="imp-mes">
+          <option value="nov">Novembro (nov)</option>
+          <option value="dez">Dezembro (dez)</option>
+          <option value="jan">Janeiro (jan)</option>
+          <option value="fev">Fevereiro (fev)</option>
+          <option value="mar">Março (mar)</option>
+          <option value="abr">Abril (abr)</option>
+          <option value="mai">Maio (mai)</option>
+          <option value="jun">Junho (jun)</option>
+        </select>
+      </div>
+      <div style="flex:1">
+        <label>Data de referência (exibição)</label>
+        <input type="text" id="imp-data" placeholder="ex: 30/11/2026">
+      </div>
+    </div>
+    <div class="imp-file-area" id="imp-drop-area">
+      <input type="file" id="imp-file" accept=".xlsx,.xls,.csv" style="display:none">
+      <span id="imp-file-label">Clique para selecionar ou arraste o arquivo Excel aqui</span>
+    </div>
+    <div id="imp-preview-wrap" hidden>
+      <label>Prévia (primeiras 5 linhas detectadas):</label>
+      <div class="imp-preview" id="imp-preview"></div>
+      <p class="imp-note" id="imp-col-info"></p>
+    </div>
+    <div class="imp-actions">
+      <button class="imp-btn sec" id="imp-cancel">Cancelar</button>
+      <button class="imp-btn pri" id="imp-confirm" disabled>Importar dados</button>
+    </div>
+  </div>
+</div>
 <script>
 const DATA = [{"nome": "Jackeline Fernandes de Franca", "departamento": "Filantropia", "jul_min": 1686, "saldo_jul": "28:06", "ago_min": 3091, "saldo_ago": "51:31", "set_min": 4322, "saldo_set": "72:02", "situacao": "Viagem marcada em novembro.", "delta_min": -1629, "delta": "-27:09", "status": "melhorando", "out_min": 2693, "saldo_out": "44:53"}, {"nome": "Jessica Marques de Lima", "departamento": "Filantropia", "jul_min": 1506, "saldo_jul": "25:06", "ago_min": 2785, "saldo_ago": "46:25", "set_min": 1574, "saldo_set": "26:14", "situacao": "Compensação de horas a partir de 15/09.", "delta_min": -809, "delta": "-13:29", "status": "melhorando", "out_min": 765, "saldo_out": "12:45"}, {"nome": "Maria Luiza Conceição de Souza", "departamento": "Cozinha", "jul_min": null, "saldo_jul": null, "ago_min": 0, "saldo_ago": "00:00", "set_min": -5760, "saldo_set": "-96:00", "situacao": null, "delta_min": 1920, "delta": "32:00", "status": "melhorando", "out_min": -3840, "saldo_out": "-64:00"}, {"nome": "Mateus Lourenço Fernandes", "departamento": "SELS", "jul_min": 6970, "saldo_jul": "116:10", "ago_min": 7974, "saldo_ago": "132:54", "set_min": 6816, "saldo_set": "113:36", "situacao": "Irá iniciar a compensação a partir de 08/09 até dia 11/09 e posteriormente irá compensar metade do período diariamente.", "delta_min": -806, "delta": "-13:26", "status": "melhorando", "out_min": 6010, "saldo_out": "100:10"}, {"nome": "Millena de Souza Magalhaes", "departamento": "Aprendiz ARS", "jul_min": 149, "saldo_jul": "02:29", "ago_min": 309, "saldo_ago": "05:09", "set_min": 397, "saldo_set": "06:37", "situacao": null, "delta_min": 56, "delta": "00:56", "status": "piorando", "out_min": 453, "saldo_out": "07:33"}, {"nome": "Nathan Lincon Batista Paiva", "departamento": "Aprendiz ARS", "jul_min": 70, "saldo_jul": "01:10", "ago_min": 241, "saldo_ago": "04:01", "set_min": 247, "saldo_set": "04:07", "situacao": null, "delta_min": 6, "delta": "00:06", "status": "piorando", "out_min": 253, "saldo_out": "04:13"}, {"nome": "Agatha da Rocha Roncato", "departamento": "Aprendiz ARS", "jul_min": 205, "saldo_jul": "03:25", "ago_min": 241, "saldo_ago": "04:01", "set_min": 275, "saldo_set": "04:35", "situacao": null, "delta_min": 166, "delta": "02:46", "status": "piorando", "out_min": 441, "saldo_out": "07:21"}, {"nome": "Bruno Santos de Paula", "departamento": "Aprendiz ARS", "jul_min": 184, "saldo_jul": "03:04", "ago_min": 991, "saldo_ago": "16:31", "set_min": 1076, "saldo_set": "17:56", "situacao": null, "delta_min": -8, "delta": "-00:08", "status": "melhorando", "out_min": 1068, "saldo_out": "17:48"}, {"nome": "Jonatas dos Santos Moises", "departamento": "Aprendiz ARS", "jul_min": -743, "saldo_jul": "-12:23", "ago_min": -743, "saldo_ago": "-12:23", "set_min": -1252, "saldo_set": "-20:52", "situacao": null, "delta_min": -42, "delta": "-00:42", "status": "piorando", "out_min": -1294, "saldo_out": "-21:34"}, {"nome": "Mikael Ferreira Honorio do Nascimento", "departamento": "Aprendiz ARS", "jul_min": -480, "saldo_jul": "-08:00", "ago_min": 268, "saldo_ago": "04:28", "set_min": -13, "saldo_set": "-00:13", "situacao": null, "delta_min": -505, "delta": "-08:25", "status": "piorando", "out_min": -518, "saldo_out": "-08:38"}, {"nome": "Nathaly Cristina de Oliveira da Silva", "departamento": "Aprendiz ARS", "jul_min": 277, "saldo_jul": "04:37", "ago_min": 425, "saldo_ago": "07:05", "set_min": 328, "saldo_set": "05:28", "situacao": null, "delta_min": 122, "delta": "02:02", "status": "piorando", "out_min": 450, "saldo_out": "07:30"}, {"nome": "Pedro Rafael Thomé Lopes Machado", "departamento": "Aprendiz ARS", "jul_min": -238, "saldo_jul": "-03:58", "ago_min": -13, "saldo_ago": "-00:13", "set_min": -97, "saldo_set": "-01:37", "situacao": null, "delta_min": -4, "delta": "-00:04", "status": "piorando", "out_min": -101, "saldo_out": "-01:41"}, {"nome": "Sofia Cruz Silva", "departamento": "Aprendiz ARS", "jul_min": 293, "saldo_jul": "04:53", "ago_min": 293, "saldo_ago": "04:53", "set_min": 108, "saldo_set": "01:48", "situacao": null, "delta_min": 37, "delta": "00:37", "status": "piorando", "out_min": 145, "saldo_out": "02:25"}, {"nome": "Vitoria Lais Mendes Dantas", "departamento": "Aprendiz ARS", "jul_min": 236, "saldo_jul": "03:56", "ago_min": 476, "saldo_ago": "07:56", "set_min": 367, "saldo_set": "06:07", "situacao": null, "delta_min": 144, "delta": "02:24", "status": "piorando", "out_min": 511, "saldo_out": "08:31"}, {"nome": "Isabelle da Motta Sampaio", "departamento": "Arquitetura", "jul_min": -2641, "saldo_jul": "-44:01", "ago_min": 540, "saldo_ago": "09:00", "set_min": 2569, "saldo_set": "42:49", "situacao": "Zerar o banco iniciando nova contagem em setembro.", "delta_min": 15, "delta": "00:15", "status": "piorando", "out_min": 2584, "saldo_out": "43:04"}, {"nome": "Danylo Wesley Duarte Bringel", "departamento": "Centro de Mídia", "jul_min": 687, "saldo_jul": "11:27", "ago_min": 1578, "saldo_ago": "26:18", "set_min": 1792, "saldo_set": "29:52", "situacao": null, "delta_min": 3571, "delta": "59:31", "status": "piorando", "out_min": 5363, "saldo_out": "89:23"}, {"nome": "Davison Alex Ferreira de Sousa", "departamento": "Centro de Mídia", "jul_min": 9873, "saldo_jul": "164:33", "ago_min": 9776, "saldo_ago": "162:56", "set_min": 3222, "saldo_set": "53:42", "situacao": "Irá iniciar a compensação a partir de 14/09 até 02/10.", "delta_min": 64, "delta": "01:04", "status": "piorando", "out_min": 3286, "saldo_out": "54:46"}, {"nome": "Marcely Seixas da Rocha", "departamento": "Centro de Mídia", "jul_min": -267, "saldo_jul": "-04:27", "ago_min": 872, "saldo_ago": "14:32", "set_min": 1112, "saldo_set": "18:32", "situacao": null, "delta_min": 1179, "delta": "19:39", "status": "piorando", "out_min": 2291, "saldo_out": "38:11"}, {"nome": "Vinicius Batista Reis da Silva", "departamento": "Centro de Mídia", "jul_min": 1743, "saldo_jul": "29:03", "ago_min": 2530, "saldo_ago": "42:10", "set_min": 3040, "saldo_set": "50:40", "situacao": "Irá iniciar a compensação a partir de 31/08 todas as segundas-feiras.", "delta_min": 410, "delta": "06:50", "status": "piorando", "out_min": 3450, "saldo_out": "57:30"}, {"nome": "Bruno Theodorio Rodrigues", "departamento": "Contabilidade", "jul_min": 22675, "saldo_jul": "377:55", "ago_min": 22712, "saldo_ago": "378:32", "set_min": 20887, "saldo_set": "348:07", "situacao": "Início da compensação a partir de 31/08 - uma vez por semana - toda terça-feira.", "delta_min": -189, "delta": "-03:09", "status": "melhorando", "out_min": 20698, "saldo_out": "344:58"}, {"nome": "Djones Costa Teixeira", "departamento": "Contabilidade", "jul_min": -1178, "saldo_jul": "-19:38", "ago_min": -548, "saldo_ago": "-09:08", "set_min": 55, "saldo_set": "00:55", "situacao": null, "delta_min": 342, "delta": "05:42", "status": "piorando", "out_min": 397, "saldo_out": "06:37"}, {"nome": "Levi Jose Silveira da Silva", "departamento": "Contabilidade", "jul_min": 14551, "saldo_jul": "242:31", "ago_min": 15194, "saldo_ago": "253:14", "set_min": 13424, "saldo_set": "223:44", "situacao": "Início da compensação a partir de 31/08 - uma vez por semana - toda quarta-feira.", "delta_min": -1562, "delta": "-26:02", "status": "melhorando", "out_min": 11862, "saldo_out": "197:42"}, {"nome": "Lorrany Gomes Veloso", "departamento": "Contabilidade", "jul_min": 5669, "saldo_jul": "94:29", "ago_min": 5976, "saldo_ago": "99:36", "set_min": 5922, "saldo_set": "98:42", "situacao": "Início da compensação a partir de 31/08 - uma vez por semana - toda segunda-feira.", "delta_min": -746, "delta": "-12:26", "status": "melhorando", "out_min": 5176, "saldo_out": "86:16"}, {"nome": "Yago Jose da Silveira Silva", "departamento": "Contabilidade", "jul_min": 12151, "saldo_jul": "202:31", "ago_min": 11749, "saldo_ago": "195:49", "set_min": 11094, "saldo_set": "184:54", "situacao": "Início da compensação a partir de 31/08 - uma vez por semana - toda segunda-feira.", "delta_min": -72, "delta": "-01:12", "status": "melhorando", "out_min": 11022, "saldo_out": "183:42"}, {"nome": "Eduina Melanie da Silva Rangel Demetrio Gonçalves", "departamento": "Cozinha", "jul_min": -288, "saldo_jul": "-04:48", "ago_min": 869, "saldo_ago": "14:29", "set_min": 1753, "saldo_set": "29:13", "situacao": null, "delta_min": 622, "delta": "10:22", "status": "piorando", "out_min": 2375, "saldo_out": "39:35"}, {"nome": "Maria José da Silva Ferreira", "departamento": "Cozinha", "jul_min": 2395, "saldo_jul": "39:55", "ago_min": 2589, "saldo_ago": "43:09", "set_min": 3846, "saldo_set": "64:06", "situacao": "Irá iniciar a compensação a partir de 31/08 - 1h por dia.", "delta_min": 580, "delta": "09:40", "status": "piorando", "out_min": 4426, "saldo_out": "73:46"}, {"nome": "Silvia Letice Duarte Souza Pituba Santos", "departamento": "Cozinha", "jul_min": 1866, "saldo_jul": "31:06", "ago_min": 2913, "saldo_ago": "48:33", "set_min": 4419, "saldo_set": "73:39", "situacao": "Irá iniciar a compensação a partir de 31/08 - 1h por dia.", "delta_min": 619, "delta": "10:19", "status": "piorando", "out_min": 5038, "saldo_out": "83:58"}, {"nome": "Sirlene Maria de Souza", "departamento": "Cozinha", "jul_min": -4568, "saldo_jul": "-76:08", "ago_min": -4568, "saldo_ago": "-76:08", "set_min": -4568, "saldo_set": "-76:08", "situacao": "Está de Atestado Médico.", "delta_min": 0, "delta": "00:00", "status": "estavel", "out_min": -4568, "saldo_out": "-76:08"}, {"nome": "Daniely Ferreira Mello Rodrigues", "departamento": "Departamento Pessoal", "jul_min": -3315, "saldo_jul": "-55:15", "ago_min": -2736, "saldo_ago": "-45:36", "set_min": -1051, "saldo_set": "-17:31", "situacao": "Compensação de horas.", "delta_min": 2400, "delta": "40:00", "status": "piorando", "out_min": 1349, "saldo_out": "22:29"}, {"nome": "Heloisa Gomes de Paula", "departamento": "Departamento Pessoal", "jul_min": -705, "saldo_jul": "-11:45", "ago_min": -116, "saldo_ago": "-01:56", "set_min": 192, "saldo_set": "03:12", "situacao": null, "delta_min": 19, "delta": "00:19", "status": "piorando", "out_min": 211, "saldo_out": "03:31"}, {"nome": "Luana de Souza Duarte", "departamento": "Departamento Pessoal", "jul_min": -235, "saldo_jul": "-03:55", "ago_min": 550, "saldo_ago": "09:10", "set_min": 583, "saldo_set": "09:43", "situacao": null, "delta_min": -31, "delta": "-00:31", "status": "melhorando", "out_min": 552, "saldo_out": "09:12"}, {"nome": "Perola Eduarda de Carvalho", "departamento": "Departamento Pessoal", "jul_min": -740, "saldo_jul": "-12:20", "ago_min": -682, "saldo_ago": "-11:22", "set_min": 141, "saldo_set": "02:21", "situacao": null, "delta_min": 310, "delta": "05:10", "status": "piorando", "out_min": 451, "saldo_out": "07:31"}, {"nome": "Gustavo Schulz de Oliveira", "departamento": "Juridico", "jul_min": 1835, "saldo_jul": "30:35", "ago_min": 2383, "saldo_ago": "39:43", "set_min": 2191, "saldo_set": "36:31", "situacao": "Compensação a partir do dia 08/09.", "delta_min": -129, "delta": "-02:09", "status": "melhorando", "out_min": 2062, "saldo_out": "34:22"}, {"nome": "Célia Valentina Mattos da Silva", "departamento": "Loja", "jul_min": 1393, "saldo_jul": "23:13", "ago_min": 1801, "saldo_ago": "30:01", "set_min": 952, "saldo_set": "15:52", "situacao": "Compensação de horas - dia 31/08 até 04/09 - trabalhará apenas na parte da tarde.", "delta_min": 26, "delta": "00:26", "status": "piorando", "out_min": 978, "saldo_out": "16:18"}, {"nome": "Elisa Viaro de Lima", "departamento": "Loja", "jul_min": -168, "saldo_jul": "-02:48", "ago_min": 1207, "saldo_ago": "20:07", "set_min": 2417, "saldo_set": "40:17", "situacao": null, "delta_min": 875, "delta": "14:35", "status": "piorando", "out_min": 3292, "saldo_out": "54:52"}, {"nome": "Vivian Carvalhosa Pinheiro Rodrigues", "departamento": "Loja", "jul_min": -2326, "saldo_jul": "-38:46", "ago_min": 1252, "saldo_ago": "20:52", "set_min": 2194, "saldo_set": "36:34", "situacao": null, "delta_min": 408, "delta": "06:48", "status": "piorando", "out_min": 2602, "saldo_out": "43:22"}, {"nome": "Calpa Rodrigues de Castro Belarmino da Mota", "departamento": "Manutenção e Limpeza", "jul_min": -1216, "saldo_jul": "-20:16", "ago_min": -1487, "saldo_ago": "-24:47", "set_min": -67, "saldo_set": "-01:07", "situacao": "Irá compensar quando tiver um evento.", "delta_min": 830, "delta": "13:50", "status": "piorando", "out_min": 763, "saldo_out": "12:43"}, {"nome": "Hosana Medeiros Tavares Ferreira", "departamento": "Manutenção e Limpeza", "jul_min": -4593, "saldo_jul": "-76:33", "ago_min": -3846, "saldo_ago": "-64:06", "set_min": -3763, "saldo_set": "-62:43", "situacao": "Irá compensar quando tiver um evento.", "delta_min": 485, "delta": "08:05", "status": "melhorando", "out_min": -3278, "saldo_out": "-54:38"}, {"nome": "Marcos Antonio Dantas Gueiros", "departamento": "Manutenção e Limpeza", "jul_min": -6647, "saldo_jul": "-110:47", "ago_min": -7197, "saldo_ago": "-119:57", "set_min": -6888, "saldo_set": "-114:48", "situacao": "Situação sendo avaliada.", "delta_min": 665, "delta": "11:05", "status": "melhorando", "out_min": -6223, "saldo_out": "-103:43"}, {"nome": "Maria das Dores Pereira Barros", "departamento": "Manutenção e Limpeza", "jul_min": -2428, "saldo_jul": "-40:28", "ago_min": -2125, "saldo_ago": "-35:25", "set_min": -1350, "saldo_set": "-22:30", "situacao": "Irá compensar quando tiver um evento.", "delta_min": 35, "delta": "00:35", "status": "melhorando", "out_min": -1315, "saldo_out": "-21:55"}, {"nome": "Noemi Conceição Lino da Silva", "departamento": "Manutenção e Limpeza", "jul_min": -398, "saldo_jul": "-06:38", "ago_min": -682, "saldo_ago": "-11:22", "set_min": -719, "saldo_set": "-11:59", "situacao": "Irá compensar quando tiver um evento.", "delta_min": 300, "delta": "05:00", "status": "melhorando", "out_min": -419, "saldo_out": "-06:59"}, {"nome": "Ana Gabriela de Mello Silva Martins", "departamento": "Multimidia e Designer", "jul_min": null, "saldo_jul": null, "ago_min": 606, "saldo_ago": "10:06", "set_min": 261, "saldo_set": "04:21", "situacao": null, "delta_min": 1507, "delta": "25:07", "status": "piorando", "out_min": 1768, "saldo_out": "29:28"}, {"nome": "Cleber Tavares Silva Eler", "departamento": "Portaria", "jul_min": 0, "saldo_jul": "00:00", "ago_min": 0, "saldo_ago": "00:00", "set_min": 0, "saldo_set": "00:00", "situacao": "Está de Atestado Médico.", "delta_min": 0, "delta": "00:00", "status": "estavel", "out_min": 0, "saldo_out": "00:00"}, {"nome": "Cosme Motta", "departamento": "Portaria", "jul_min": 0, "saldo_jul": "00:00", "ago_min": 0, "saldo_ago": "00:00", "set_min": 0, "saldo_set": "00:00", "situacao": null, "delta_min": 0, "delta": "00:00", "status": "estavel", "out_min": 0, "saldo_out": "00:00"}, {"nome": "Deividy Marcilio Toledo", "departamento": "Portaria", "jul_min": 0, "saldo_jul": "00:00", "ago_min": 0, "saldo_ago": "00:00", "set_min": 0, "saldo_set": "00:00", "situacao": null, "delta_min": 0, "delta": "00:00", "status": "estavel", "out_min": 0, "saldo_out": "00:00"}, {"nome": "Leandro Ramon Pereira de Oliveira", "departamento": "Estoque", "jul_min": -2236, "saldo_jul": "-37:16", "ago_min": -2982, "saldo_ago": "-49:42", "set_min": -3726, "saldo_set": "-62:06", "situacao": "Descontar da intrajornada.", "delta_min": 4487, "delta": "74:47", "status": "melhorando", "out_min": 761, "saldo_out": "12:41"}, {"nome": "Silvio Denante Spinola", "departamento": "Portaria", "jul_min": 0, "saldo_jul": "00:00", "ago_min": 0, "saldo_ago": "00:00", "set_min": 0, "saldo_set": "00:00", "situacao": null, "delta_min": 0, "delta": "00:00", "status": "estavel", "out_min": 0, "saldo_out": "00:00"}, {"nome": "Adla Ribeiro Sousa Santos", "departamento": "Recepção", "jul_min": 813, "saldo_jul": "13:33", "ago_min": 828, "saldo_ago": "13:48", "set_min": 857, "saldo_set": "14:17", "situacao": null, "delta_min": 339, "delta": "05:39", "status": "piorando", "out_min": 1196, "saldo_out": "19:56"}, {"nome": "Rosangela de Almeida Souza Lima", "departamento": "Recepção", "jul_min": 3246, "saldo_jul": "54:06", "ago_min": 0, "saldo_ago": "00:00", "set_min": 329, "saldo_set": "05:29", "situacao": "Pagamento realizado em folha.", "delta_min": 655, "delta": "10:55", "status": "piorando", "out_min": 984, "saldo_out": "16:24"}, {"nome": "Brayan Sabino da Silva", "departamento": "Secretárias", "jul_min": 854, "saldo_jul": "14:14", "ago_min": 969, "saldo_ago": "16:09", "set_min": 1237, "saldo_set": "20:37", "situacao": null, "delta_min": 1139, "delta": "18:59", "status": "piorando", "out_min": 2376, "saldo_out": "39:36"}, {"nome": "Bruna da Silva Pereira Costa", "departamento": "Secretárias", "jul_min": -1895, "saldo_jul": "-31:35", "ago_min": -759, "saldo_ago": "-12:39", "set_min": -682, "saldo_set": "-11:22", "situacao": null, "delta_min": 556, "delta": "09:16", "status": "melhorando", "out_min": -126, "saldo_out": "-02:06"}, {"nome": "Bruna Paim de Oliveira", "departamento": "Secretárias", "jul_min": 5437, "saldo_jul": "90:37", "ago_min": 3601, "saldo_ago": "60:01", "set_min": 3617, "saldo_set": "60:17", "situacao": "Já está compensando 2x por semana - segundas e quartas-feiras.", "delta_min": 1292, "delta": "21:32", "status": "piorando", "out_min": 4909, "saldo_out": "81:49"}, {"nome": "Gabrielle Silva Pereira", "departamento": "Secretárias", "jul_min": 674, "saldo_jul": "11:14", "ago_min": 1820, "saldo_ago": "30:20", "set_min": 2845, "saldo_set": "47:25", "situacao": "Retornando das férias, irá compensar.", "delta_min": 955, "delta": "15:55", "status": "piorando", "out_min": 3800, "saldo_out": "63:20"}, {"nome": "Iale Clitias Azevedo Oliveira Mariano da Silva", "departamento": "Secretárias", "jul_min": 3104, "saldo_jul": "51:44", "ago_min": 2520, "saldo_ago": "42:00", "set_min": 3285, "saldo_set": "54:45", "situacao": "Compensação dias 27 e 28/08 já definidas.", "delta_min": 396, "delta": "06:36", "status": "piorando", "out_min": 3681, "saldo_out": "61:21"}, {"nome": "Maria Aparecida Mendes dos Santos Faria", "departamento": "Secretárias", "jul_min": 3138, "saldo_jul": "52:18", "ago_min": 3926, "saldo_ago": "65:26", "set_min": 3266, "saldo_set": "54:26", "situacao": "Está compensando 1 dia por semana.", "delta_min": 1972, "delta": "32:52", "status": "piorando", "out_min": 5238, "saldo_out": "87:18"}, {"nome": "Suzana Silva dos Santos", "departamento": "Secretárias", "jul_min": 1048, "saldo_jul": "17:28", "ago_min": 2233, "saldo_ago": "37:13", "set_min": 1689, "saldo_set": "28:09", "situacao": "Irá compensar nos dias 14, 21/09 e 09/10.", "delta_min": 1003, "delta": "16:43", "status": "piorando", "out_min": 2692, "saldo_out": "44:52"}, {"nome": "Zilanda Machado de Almeida", "departamento": "Secretárias", "jul_min": 188, "saldo_jul": "03:08", "ago_min": 1042, "saldo_ago": "17:22", "set_min": 1472, "saldo_set": "24:32", "situacao": null, "delta_min": -258, "delta": "-04:18", "status": "melhorando", "out_min": 1214, "saldo_out": "20:14"}, {"nome": "Alex Damião Moraes Oliveira", "departamento": "Estoque", "jul_min": 753, "saldo_jul": "12:33", "ago_min": 1402, "saldo_ago": "23:22", "set_min": 2128, "saldo_set": "35:28", "situacao": null, "delta_min": 604, "delta": "10:04", "status": "piorando", "out_min": 2732, "saldo_out": "45:32"}, {"nome": "Evandro Branco de Oliveira", "departamento": "Motorista", "jul_min": -6203, "saldo_jul": "-103:23", "ago_min": -6387, "saldo_ago": "-106:27", "set_min": -6631, "saldo_set": "-110:31", "situacao": "Situação sendo avaliada.", "delta_min": 657, "delta": "10:57", "status": "melhorando", "out_min": -5974, "saldo_out": "-99:34"}, {"nome": "Fabio Correa Lima", "departamento": "Portaria", "jul_min": 1254, "saldo_jul": "20:54", "ago_min": 2547, "saldo_ago": "42:27", "set_min": 3547, "saldo_set": "59:07", "situacao": null, "delta_min": -602, "delta": "-10:02", "status": "melhorando", "out_min": 2945, "saldo_out": "49:05"}, {"nome": "Francisco Alberto Barros Moreira", "departamento": "Manutenção", "jul_min": -582, "saldo_jul": "-09:42", "ago_min": 2, "saldo_ago": "00:02", "set_min": 332, "saldo_set": "05:32", "situacao": null, "delta_min": 288, "delta": "04:48", "status": "piorando", "out_min": 620, "saldo_out": "10:20"}, {"nome": "Francisco de Assis de Oliveira", "departamento": "Manutenção", "jul_min": -1825, "saldo_jul": "-30:25", "ago_min": -1441, "saldo_ago": "-24:01", "set_min": -1037, "saldo_set": "-17:17", "situacao": "Compensação de horas conforme demanda.", "delta_min": 382, "delta": "06:22", "status": "melhorando", "out_min": -655, "saldo_out": "-10:55"}, {"nome": "Marinaldo Santana do Nascimento", "departamento": "Estoque", "jul_min": 337, "saldo_jul": "05:37", "ago_min": 466, "saldo_ago": "07:46", "set_min": 683, "saldo_set": "11:23", "situacao": null, "delta_min": 229, "delta": "03:49", "status": "piorando", "out_min": 912, "saldo_out": "15:12"}, {"nome": "Esli Victorio Garcia", "departamento": "Tesouraria de Igrejas", "jul_min": 455, "saldo_jul": "07:35", "ago_min": 1286, "saldo_ago": "21:26", "set_min": 1543, "saldo_set": "25:43", "situacao": null, "delta_min": -251, "delta": "-04:11", "status": "melhorando", "out_min": 1292, "saldo_out": "21:32"}, {"nome": "Marcelo de Carvalho da Silva", "departamento": "Tesouraria de Igrejas", "jul_min": 6634, "saldo_jul": "110:34", "ago_min": 7440, "saldo_ago": "124:00", "set_min": 7718, "saldo_set": "128:38", "situacao": "Situação sendo avaliada.", "delta_min": -915, "delta": "-15:15", "status": "melhorando", "out_min": 6803, "saldo_out": "113:23"}, {"nome": "Odilon Augusto Ricardo", "departamento": "Tesouraria de Igrejas", "jul_min": -3, "saldo_jul": "-00:03", "ago_min": -817, "saldo_ago": "-13:37", "set_min": -104, "saldo_set": "-01:44", "situacao": null, "delta_min": 348, "delta": "05:48", "status": "piorando", "out_min": 244, "saldo_out": "04:04"}, {"nome": "Lucas de Godoy da Silva Bernardo", "departamento": "TI - Tecnologia da Informação", "jul_min": 2462, "saldo_jul": "41:02", "ago_min": 2491, "saldo_ago": "41:31", "set_min": 1624, "saldo_set": "27:04", "situacao": "Situação sendo avaliada.", "delta_min": 616, "delta": "10:16", "status": "piorando", "out_min": 2240, "saldo_out": "37:20"}, {"nome": "Matheus Leandro da Silva Rosa", "departamento": "TI - Tecnologia da Informação", "jul_min": 7551, "saldo_jul": "125:51", "ago_min": 8355, "saldo_ago": "139:15", "set_min": 7271, "saldo_set": "121:11", "situacao": "Situação sendo avaliada.", "delta_min": 837, "delta": "13:57", "status": "piorando", "out_min": 8108, "saldo_out": "135:08"}, {"nome": "Bryan Harley Bastos Feijo", "departamento": "Tesouraria de Igrejas", "jul_min": null, "saldo_jul": null, "ago_min": 0, "saldo_ago": "00:00", "set_min": null, "saldo_set": null, "situacao": null, "out_min": 409, "saldo_out": "06:49", "status": "novo", "delta_min": null, "delta": null}, {"nome": "Mariana Morais Ferreira", "departamento": "Aprendiz ARS", "jul_min": null, "saldo_jul": null, "ago_min": null, "saldo_ago": null, "set_min": null, "saldo_set": null, "situacao": null, "delta_min": null, "delta": null, "status": "novo", "out_min": -240, "saldo_out": "-04:00"}];
 const DEPTS = ["Aprendiz ARS", "Arquitetura", "Centro de Mídia", "Contabilidade", "Cozinha", "Departamento Pessoal", "Estoque", "Filantropia", "Juridico", "Loja", "Manutenção", "Manutenção e Limpeza", "Motorista", "Multimidia e Designer", "Portaria", "Recepção", "Secretárias", "SELS", "Tesouraria de Igrejas", "TI - Tecnologia da Informação"];
@@ -824,7 +893,11 @@ function verdictOf(e) {
   const txt = e.status === "melhorando" ? "aproximando-se de zero" : e.status === "piorando" ? "afastando-se de zero" : "sem mudança";
   return { k, t: `${d === 0 ? "■" : arrow(d)} ${d === 0 ? "sem variação" : sgn(d)} desde setembro · ${txt}` };
 }
-let ACORDOS = {}, SIT = {}, dbApi = null, canWrite = false;
+let ACORDOS = {}, SIT = {}, canWrite = true;
+try { const a = localStorage.getItem("bh_acordos"); if (a) ACORDOS = JSON.parse(a); } catch(e) {}
+try { const s = localStorage.getItem("bh_sit"); if (s) SIT = JSON.parse(s); } catch(e) {}
+// Carregar overrides de dados importados
+try { const ov = localStorage.getItem("bh_data_overrides"); if (ov) { const m = JSON.parse(ov); DATA.forEach(e => { if (m[e.nome]) Object.assign(e, m[e.nome]); }); } } catch(e) {}
 const SITL = { ferias: "Férias", licenca: "Licença" };
 const sitBadge = e => SIT[e.nome] ? `<span class="sb ${SIT[e.nome]}">${SITL[SIT[e.nome]]}</span>` : "";
 const acordoOf = e => Object.prototype.hasOwnProperty.call(ACORDOS, e.nome) ? ACORDOS[e.nome] : (e.situacao || "");
@@ -1006,34 +1079,17 @@ function renderReport(list) {
 const EXP_W = 1200, PAGE_H = 1738; // largura do layout (px) e altura útil de uma página A4 nessa escala
 let downloadsApi = null;
 (async () => { try { downloadsApi = (window.claude && await window.claude.use("downloads")) || null; } catch (e) { downloadsApi = null; } })();
-(async () => {
-  try {
-    dbApi = (window.claude && await window.claude.use("db")) || null;
-    if (!dbApi) return;
-    let can = null; try { const u = await window.claude.use("user"); can = u && u.can ? await u.can("data.write") : null; } catch (e) {}
-    canWrite = can !== false;
-    dbApi.collection("acordos").onSnapshot(snap => {
-      const m = {}; snap.docs.forEach(d => { const x = d.data(); if (x && typeof x.texto === "string" && x.nome) m[x.nome] = x.texto; });
-      ACORDOS = m; if (state.view !== "home") render(); keepFocus();
-    }, () => {});
-    dbApi.collection("situacoes").onSnapshot(snap => {
-      const m = {}; snap.docs.forEach(d => { const x = d.data(); if (x && x.nome && SITL[x.situacao]) m[x.nome] = x.situacao; });
-      SIT = m; if (state.view !== "home") render();
-    }, () => {});
-    if (state.view !== "home") render();
-  } catch (e) { dbApi = null; }
-})();
 function keepFocus() { const t = document.getElementById("obs-ta"); if (t && document.activeElement !== t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }
 const docId = n => slug(n).slice(0, 150) || "x";
 $("report").addEventListener("click", async ev => {
   const b = ev.target.closest("button"); if (!b) return;
   if (b.dataset.edit) { const e = DATA.find(x => x.nome === b.dataset.edit); state.editing = e.nome; state.draft = acordoOf(e); render(); keepFocus(); }
   else if (b.dataset.cancel) { state.editing = null; render(); }
-  else if (b.dataset.save && dbApi) {
+  else if (b.dataset.save) {
     const nome = b.dataset.save, texto = ($("obs-ta") ? $("obs-ta").value : state.draft).trim();
-    b.disabled = true;
-    try { await dbApi.collection("acordos").doc(docId(nome)).set({ nome, texto, atualizadoEm: new Date().toISOString() }); state.editing = null; ACORDOS[nome] = texto; render(); say("Acordo salvo."); }
-    catch (err) { b.disabled = false; if (err && err.code === "invalid_argument") { canWrite = false; state.editing = null; render(); say("Sem permissão para editar. Peça acesso de editor ao dono do painel."); } else say("Não foi possível salvar. Tente de novo."); }
+    if (texto) ACORDOS[nome] = texto; else delete ACORDOS[nome];
+    try { localStorage.setItem("bh_acordos", JSON.stringify(ACORDOS)); } catch(e) {}
+    state.editing = null; render(); say("Acordo salvo.");
   }
 });
 $("report").addEventListener("input", ev => { if (ev.target.id === "obs-ta") state.draft = ev.target.value; });
@@ -1184,27 +1240,19 @@ function renderCad(list) {
   const nf = all.filter(e => SIT[e.nome] === "ferias").length, nl = all.filter(e => SIT[e.nome] === "licenca").length;
   const chips = [["", "Todos", all.length], ["ferias", "Férias", nf], ["licenca", "Licença", nl], ["ativo", "Em atividade", all.length - nf - nl]];
   const rows = all.filter(e => f === "" || (f === "ativo" ? !SIT[e.nome] : SIT[e.nome] === f));
-  const dis = !dbApi || !canWrite ? " disabled" : "";
+  const dis = "";
   box.innerHTML = `<div><h2>Férias e licenças</h2><div class="scope">${scopeHtml(list)}</div></div>
     <div class="fchips" role="group" aria-label="Filtrar por situação">${chips.map(([v, l, n]) => `<button type="button" class="fchip" data-sitf="${v}" aria-pressed="${f === v}">${l} <span>${n}</span></button>`).join("")}</div>
-    ${dbApi ? "" : `<p class="note-ro">Esta visualização é somente leitura: a situação não pode ser alterada aqui.</p>`}
     <div class="tscroll"><table class="rtbl cadt"><thead><tr><th>Colaborador</th><th>Departamento</th><th>Situação</th></tr></thead><tbody>${rows.length ? rows.map(e => {
       const k = colorOf(e.departamento), v = SIT[e.nome] || "";
       return `<tr><td class="nm">${esc(e.nome)}</td><td class="dp"><i style="background:${k.c}"></i>${esc(e.departamento)}</td><td class="st"><select class="sel ${v}" data-sit="${esc(e.nome)}" aria-label="Situação de ${esc(e.nome)}"${dis}><option value=""${v === "" ? " selected" : ""}>Em atividade</option><option value="ferias"${v === "ferias" ? " selected" : ""}>Férias</option><option value="licenca"${v === "licenca" ? " selected" : ""}>Licença</option></select></td></tr>`;
     }).join("") : `<tr><td colspan="3" class="none">Nenhum colaborador nesta situação.</td></tr>`}</tbody></table></div>
     <p style="margin:0;font-size:11.5px;color:var(--fg-faint)">A situação aparece como etiqueta ao lado do nome nos cartões e no relatório. Os filtros do topo (departamentos, nomes, faixa de saldo) também valem aqui.</p>`;
 }
-async function saveSit(nome, v) {
-  if (!dbApi) { say("Salvar não está disponível nesta visualização."); render(); return; }
-  try {
-    const ref = dbApi.collection("situacoes").doc(docId(nome));
-    if (v) await ref.set({ nome, situacao: v, atualizadoEm: new Date().toISOString() }); else await ref.delete();
-    if (v) SIT[nome] = v; else delete SIT[nome];
-    render(); say(v ? `${nome.split(" ")[0]}: ${SITL[v]}.` : "Situação removida.");
-  } catch (err) {
-    if (err && err.code === "invalid_argument") { canWrite = false; say("Sem permissão para editar. Peça acesso de editor ao dono do painel."); } else say("Não foi possível salvar. Tente de novo.");
-    render();
-  }
+function saveSit(nome, v) {
+  if (v) SIT[nome] = v; else delete SIT[nome];
+  try { localStorage.setItem("bh_sit", JSON.stringify(SIT)); } catch(e) {}
+  render(); say(v ? `${nome.split(" ")[0]}: ${SITL[v]}.` : "Situação removida.");
 }
 $("cad").addEventListener("change", ev => { const sel = ev.target.closest("select[data-sit]"); if (sel) saveSit(sel.dataset.sit, sel.value); });
 $("cad").addEventListener("click", ev => { const b = ev.target.closest("[data-sitf]"); if (b) { state.sitf = b.dataset.sitf; render(); } });
@@ -1275,6 +1323,118 @@ $("band-list").addEventListener("click", ev => {
 });
 $("band-clear").addEventListener("click", () => { state.bands.clear(); state.sign = ""; state.ref = 3; pruneNames(); render(); });
 $("st-list").addEventListener("click", ev => { const li = ev.target.closest(".opt"); if (!li) return; state.status = li.dataset.st; $("st-pop").hidden = true; $("st-btn").setAttribute("aria-expanded", "false"); render(); });
+
+/* ---------- modal de importação ---------- */
+const IMP_MESES_LABEL = { jul:"Julho",ago:"Agosto",set:"Setembro",out:"Outubro",nov:"Novembro",dez:"Dezembro",jan:"Janeiro",fev:"Fevereiro",mar:"Março",abr:"Abril",mai:"Maio",jun:"Junho" };
+let impRows = null, impDetected = null;
+
+$("imp-btn").addEventListener("click", () => { $("imp-modal-bg").hidden = false; impRows = null; impDetected = null; $("imp-preview-wrap").hidden = true; $("imp-confirm").disabled = true; $("imp-file-label").textContent = "Clique para selecionar ou arraste o arquivo Excel aqui"; });
+$("imp-cancel").addEventListener("click", () => { $("imp-modal-bg").hidden = true; });
+$("imp-modal-bg").addEventListener("click", ev => { if (ev.target === $("imp-modal-bg")) $("imp-modal-bg").hidden = true; });
+$("imp-drop-area").addEventListener("click", () => $("imp-file").click());
+$("imp-drop-area").addEventListener("dragover", ev => { ev.preventDefault(); $("imp-drop-area").style.background = "#e8f4fd"; });
+$("imp-drop-area").addEventListener("dragleave", () => { $("imp-drop-area").style.background = ""; });
+$("imp-drop-area").addEventListener("drop", ev => { ev.preventDefault(); $("imp-drop-area").style.background = ""; if (ev.dataTransfer.files[0]) handleImpFile(ev.dataTransfer.files[0]); });
+$("imp-file").addEventListener("change", ev => { if (ev.target.files[0]) handleImpFile(ev.target.files[0]); });
+$("imp-tipo").addEventListener("change", () => { const novoMes = $("imp-tipo").value === "novo"; $("imp-mes-wrap").style.display = novoMes ? "" : "none"; });
+
+function normNome(s) { return s ? s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim() : ""; }
+function detectCols(headers) {
+  // Detectar coluna de nome
+  const nomeIdx = headers.findIndex(h => /nome|funcion|colabor|empregad/i.test(h));
+  // Detectar colunas de saldo em minutos
+  const minCols = headers.map((h,i) => ({ h, i })).filter(x => /_min$/i.test(x.h));
+  // Detectar coluna de situação
+  const sitIdx = headers.findIndex(h => /situa|observ|acordo/i.test(h));
+  // Detectar coluna de departamento
+  const deptIdx = headers.findIndex(h => /depart/i.test(h));
+  return { nomeIdx, minCols, sitIdx, deptIdx };
+}
+function handleImpFile(file) {
+  $("imp-file-label").textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+      if (!rows.length) { say("Arquivo vazio ou inválido."); return; }
+      const headers = rows[0].map(h => String(h).trim());
+      const det = detectCols(headers);
+      impDetected = det;
+      impRows = rows.slice(1).filter(r => r[det.nomeIdx]);
+      // Mostrar prévia
+      const preview5 = impRows.slice(0, 5);
+      const cols = [det.nomeIdx, ...det.minCols.map(c => c.i), det.sitIdx, det.deptIdx].filter(i => i >= 0);
+      const previewHtml = `<table><thead><tr>${cols.map(i => `<th>${esc(headers[i])}</th>`).join("")}</tr></thead><tbody>${preview5.map(r => `<tr>${cols.map(i => `<td>${esc(String(r[i] ?? ""))}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+      $("imp-preview").innerHTML = previewHtml;
+      $("imp-col-info").textContent = `Detectado: coluna nome="${headers[det.nomeIdx] || "não encontrada"}", colunas min: ${det.minCols.map(c => c.h).join(", ") || "não encontradas"}. ${impRows.length} registros encontrados.`;
+      $("imp-preview-wrap").hidden = false;
+      $("imp-confirm").disabled = det.nomeIdx < 0 || !det.minCols.length;
+    } catch(e) { say("Erro ao ler arquivo: " + e.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+$("imp-confirm").addEventListener("click", () => {
+  if (!impRows || !impDetected) return;
+  const tipo = $("imp-tipo").value;
+  const det = impDetected;
+  const overrides = {};
+  try { const ov = localStorage.getItem("bh_data_overrides"); if (ov) Object.assign(overrides, JSON.parse(ov)); } catch(e) {}
+
+  const dataMap = {}; DATA.forEach(e => { dataMap[normNome(e.nome)] = e; });
+  let updated = 0, skipped = 0;
+
+  impRows.forEach(row => {
+    const nomeRaw = String(row[det.nomeIdx] || "").trim();
+    const key = normNome(nomeRaw);
+    const emp = dataMap[key];
+    if (!emp) { skipped++; return; }
+    const patch = {};
+    det.minCols.forEach(col => {
+      const v = row[col.i];
+      const num = typeof v === "number" ? v : parseInt(String(v).replace(/[^0-9\-]/g,""));
+      if (isNaN(num)) return;
+      if (tipo === "atual") {
+        // Atualiza o último mês existente (out) com os dados novos
+        patch.out_min = num;
+        patch.saldo_out = fmtSaldo(num);
+      } else {
+        // Adiciona novo mês usando o nome da coluna
+        const mes = col.h.replace(/_min$/i,"");
+        patch[`${mes}_min`] = num;
+        patch[`saldo_${mes}`] = fmtSaldo(num);
+      }
+    });
+    if (det.sitIdx >= 0 && row[det.sitIdx]) patch.situacao = String(row[det.sitIdx]).trim();
+    if (Object.keys(patch).length) {
+      Object.assign(emp, patch);
+      if (!overrides[emp.nome]) overrides[emp.nome] = {};
+      Object.assign(overrides[emp.nome], patch);
+      updated++;
+    }
+  });
+
+  try { localStorage.setItem("bh_data_overrides", JSON.stringify(overrides)); } catch(e) {}
+  // Recalcular status e delta
+  DATA.forEach(e => {
+    const prev = e.set_min, cur = e.out_min;
+    if (prev !== null && cur !== null) {
+      const d = Math.abs(cur) - Math.abs(prev);
+      e.delta_min = -d;
+      e.delta = fmtSaldo(-d);
+      e.status = d < 0 ? "melhorando" : d > 0 ? "piorando" : "estavel";
+    }
+  });
+  $("imp-modal-bg").hidden = true;
+  render();
+  say(`Importado: ${updated} colaborador(es) atualizado(s)${skipped ? ", " + skipped + " não encontrado(s) na base" : ""}.`);
+});
+function fmtSaldo(min) {
+  if (min === null || isNaN(min)) return null;
+  const abs = Math.abs(min), h = Math.floor(abs/60), m = abs%60;
+  return (min < 0 ? "-" : "") + String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0");
+}
 
 try { if (localStorage.getItem("bh_showLeave") === "0") state.showLeave = false; } catch (e) {}
 $("chk-leave").addEventListener("change", ev => {
